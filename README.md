@@ -11,7 +11,7 @@
 
 A lightweight, native Twitch client for Windows – with **multiview**, **chat incl. 7TV/BTTV/FFZ** and lots of quality-of-life features.
 Built with [Tauri 2](https://tauri.app) (Rust) and React. The app is only ~8 MB and uses the WebView2 runtime built into Windows.
-The interface is available in **English and German** (Settings → Language).
+The interface is available in **English and German** (Settings → General → Language).
 
 ### Download
 
@@ -25,6 +25,7 @@ Windows SmartScreen may warn because the file is not code-signed (“More info�
 - HLS player with quality selection, low latency and minimal YouTube-style controls
 - Custom fullscreen mode (double-click / Esc) with optional chat beside the video
 - With the twitch.tv login your **Turbo and sub benefits** apply (no ads)
+- **Keyboard shortcuts**: Space play/pause, M mute, F fullscreen, C chat, ↑/↓ volume, L live, R reload, N next stream – changeable in Settings → Player
 
 **Multiview**
 - Up to 9 streams at once, grid or focus layout
@@ -37,8 +38,10 @@ Windows SmartScreen may warn because the file is not code-signed (“More info�
 - Emote picker, tab completion, mention sound, highlight words
 - Slow down / delay chat, font and size, timestamps and more
 - Recent chat history when opening a channel, user cards with older messages, whisper and mention
+- **Reply** to messages (hover a message → reply button, Esc cancels)
 
 **More**
+- **Follow / unfollow** channels with the ♡ in the player
 - Search for channels and categories, category browser with favorite categories
 - Followed live channels with refresh button, sortable by viewers, recently watched or “recommended”
 - Channel points (balance, rewards) and drops progress
@@ -51,8 +54,8 @@ The app then uses that session (for chat, followed channels, Turbo/subs, channel
 
 The token is stored **locally only**: `%APPDATA%\dev.nativ.twitchclient\auth.json`. “Log out” deletes it and revokes it at Twitch.
 
-**Channel points & drops:** Twitch only allows claiming bonus chests, rewards and drops through its own website (“integrity check”).
-“Claim” therefore opens the matching Twitch page in your browser.
+**Channel points, drops & follows:** Twitch may only allow claiming bonus chests, rewards and drops (and sometimes following) through its own website (“integrity check”).
+In that case the app opens the matching Twitch page in your browser.
 
 **Alternative: your own Twitch app** (Settings → Account → Advanced)
 1. Create an app at <https://dev.twitch.tv/console/apps/create> (OAuth redirect `http://localhost`, client type **Public**)
@@ -79,7 +82,7 @@ Output:
 | `src-tauri/src/stream.rs` | Fetch playback token, build HLS playlist URL |
 | `src-tauri/src/proxy.rs` | `twproxy://` – routes HLS requests around CORS |
 | `src-tauri/src/auth.rs` | twitch.tv login, device-code login, Helix API |
-| `src-tauri/src/points.rs`, `drops.rs` | Channel points and drops |
+| `src-tauri/src/points.rs`, `drops.rs`, `follow.rs` | Channel points, drops, follow |
 | `src/lib/player.ts` | hls.js setup |
 | `src/lib/irc.ts`, `src/lib/chat.ts` | IRC client, chat store, history |
 | `src/lib/emotes.ts`, `src/lib/seventv.ts` | 7TV / BTTV / FFZ, 7TV EventAPI & paints |
@@ -101,7 +104,7 @@ Chat history and older messages come from [recent-messages.robotty.de](https://r
 
 Ein schlanker, nativer Twitch-Client für Windows – mit **Multiview**, **Chat inkl. 7TV/BTTV/FFZ** und vielen Komfortfunktionen.
 Gebaut mit [Tauri 2](https://tauri.app) (Rust) und React. Die App ist nur ~8 MB groß und nutzt das in Windows eingebaute WebView2.
-Die Oberfläche gibt es auf **Deutsch und Englisch** (Einstellungen → Sprache).
+Die Oberfläche gibt es auf **Deutsch und Englisch** (Einstellungen → Allgemein → Sprache).
 
 ### Download
 
@@ -115,6 +118,7 @@ Windows SmartScreen warnt eventuell, weil die Datei nicht signiert ist („Weite
 - HLS-Player mit Qualitätsauswahl, niedriger Latenz und minimalistischen Steuerelementen im YouTube-Stil
 - Eigener Vollbildmodus (Doppelklick / Esc), auf Wunsch mit Chat neben dem Video
 - Mit twitch.tv-Login gelten **Turbo- und Abo-Vorteile** (keine Werbung)
+- **Tastenkürzel**: Leertaste Abspielen/Pause, M stumm, F Vollbild, C Chat, ↑/↓ Lautstärke, L live, R neu laden, N nächster Stream – änderbar unter Einstellungen → Player
 
 **Multiview**
 - Bis zu 9 Streams gleichzeitig, Raster- oder Fokus-Layout
@@ -127,8 +131,10 @@ Windows SmartScreen warnt eventuell, weil die Datei nicht signiert ist („Weite
 - Emote-Auswahl, Tab-Vervollständigung, Erwähnungen mit Ton, Highlight-Wörter
 - Chat verlangsamen/verzögern, Schriftart/-größe, Zeitstempel u. v. m.
 - Chatverlauf beim Öffnen, Nutzerkarte mit älteren Nachrichten, Flüstern und Erwähnen
+- Auf Nachrichten **antworten** (Maus über die Nachricht → Antworten-Knopf, Esc bricht ab)
 
 **Sonstiges**
+- Kanälen **folgen / entfolgen** mit dem ♡ im Player
 - Suche nach Kanälen und Kategorien, Kategorie-Übersicht mit Lieblingskategorien
 - Gefolgte Live-Kanäle mit Aktualisieren-Knopf, sortierbar nach Zuschauern, zuletzt gesehen oder „Empfohlen“
 - Kanalpunkte (Kontostand, Belohnungen) und Drops-Fortschritt
@@ -141,8 +147,8 @@ Danach übernimmt die App die Sitzung (für Chat, gefolgte Kanäle, Turbo/Abo, K
 
 Das Token wird **nur lokal** gespeichert: `%APPDATA%\dev.nativ.twitchclient\auth.json`. „Abmelden“ löscht es und widerruft es bei Twitch.
 
-**Kanalpunkte & Drops:** Twitch erlaubt das Einsammeln von Bonus-Truhen, Belohnungen und Drops nur über die eigene Webseite („integrity check“).
-„Einsammeln“ öffnet deshalb die passende Twitch-Seite in deinem Browser.
+**Kanalpunkte, Drops & Folgen:** Twitch erlaubt das Einsammeln von Bonus-Truhen, Belohnungen und Drops (und teils das Folgen) nur über die eigene Webseite („integrity check“).
+Die App öffnet dann die passende Twitch-Seite in deinem Browser.
 
 **Alternative: eigene Twitch-App** (Einstellungen → Konto → Erweitert)
 1. Auf <https://dev.twitch.tv/console/apps/create> eine App anlegen (OAuth-Redirect `http://localhost`, Client-Typ **Öffentlich**)
@@ -169,7 +175,7 @@ Ergebnis:
 | `src-tauri/src/stream.rs` | Playback-Token holen, HLS-Playlist-URL bauen |
 | `src-tauri/src/proxy.rs` | `twproxy://` – leitet HLS-Anfragen um CORS herum |
 | `src-tauri/src/auth.rs` | twitch.tv-Login, Device-Code-Login, Helix-API |
-| `src-tauri/src/points.rs`, `drops.rs` | Kanalpunkte und Drops |
+| `src-tauri/src/points.rs`, `drops.rs`, `follow.rs` | Kanalpunkte, Drops, Folgen |
 | `src/lib/player.ts` | hls.js-Setup |
 | `src/lib/irc.ts`, `src/lib/chat.ts` | IRC-Client, Chat-Store, Verlauf |
 | `src/lib/emotes.ts`, `src/lib/seventv.ts` | 7TV / BTTV / FFZ, 7TV-EventAPI & Paints |

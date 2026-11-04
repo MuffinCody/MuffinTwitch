@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
-import { chat, sendMessage, useChatVersion, type ChatMsg } from "../lib/chat";
+import { chat, sendMessage, useChatVersion, type ChatMsg, type ReplyTarget } from "../lib/chat";
 import { UserCard, type UserCardTarget } from "./UserCard";
 import { irc } from "../lib/irc";
 import { emoteNames, onEmotesChanged, channelEmoteCount } from "../lib/emotes";
@@ -64,6 +64,8 @@ export function ChatPanel({ channels, active, onActive, loggedIn, userId, onLogi
   const [input, setInput] = useState("");
   const [sendTarget, setSendTarget] = useState<string>("");
   const [pickerOpen, setPickerOpen] = useState(false);
+  /** Antwort auf eine Nachricht (Twitch-Antworten) */
+  const [replyTo, setReplyTo] = useState<(ReplyTarget & { channel: string }) | null>(null);
   const completion = useRef<{ prefix: string; matches: string[]; idx: number; start: number } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -103,6 +105,9 @@ export function ChatPanel({ channels, active, onActive, loggedIn, userId, onLogi
   }, []);
 
   useEffect(() => setPaused(false), [active]);
+  useEffect(() => {
+    if (replyTo && target !== replyTo.channel) setReplyTo(null);
+  }, [target, replyTo]);
 
   /**
    * Pausieren nur durch echtes Hochscrollen des Nutzers (Mausrad / Scrollleiste),
@@ -153,6 +158,13 @@ export function ChatPanel({ channels, active, onActive, loggedIn, userId, onLogi
   }, []);
 
   const insertName = useCallback((name: string) => insertText(`@${name}`), [insertText]);
+  const startReply = useCallback((m: ChatMsg) => {
+    const login = m.login ?? "";
+    const name = m.displayName && m.displayName.toLowerCase() === login ? m.displayName : login;
+    setSendTarget(m.channel);
+    setReplyTo({ id: m.id, name, text: m.text, channel: m.channel });
+    inputRef.current?.focus();
+  }, []);
   const openCard = useCallback((m: ChatMsg, x: number, y: number) => {
     if (!m.login) return;
     setCard({ login: m.login, displayName: m.displayName ?? m.login, userId: m.userId, color: m.color, channel: m.channel, x, y });
@@ -192,10 +204,18 @@ export function ChatPanel({ channels, active, onActive, loggedIn, userId, onLogi
       return;
     }
     completion.current = null;
+    if (e.key === "Escape" && replyTo) {
+      e.preventDefault();
+      e.stopPropagation();
+      setReplyTo(null);
+      return;
+    }
     if (e.key === "Enter") {
-      if (target && sendMessage(target, input)) {
+      const reply = replyTo && replyTo.channel === target ? replyTo : undefined;
+      if (target && sendMessage(target, input, reply)) {
         for (const w of input.split(/\s+/)) if (emoteNames(target).includes(w)) rememberEmote(w);
         setInput("");
+        setReplyTo(null);
       }
     }
   };
@@ -289,6 +309,7 @@ export function ChatPanel({ channels, active, onActive, loggedIn, userId, onLogi
             chanAvatar={channelAvatars[m.channel]}
             sourceUser={m.sourceRoomId && m.sourceRoomId !== m.roomId ? roomUsers[m.sourceRoomId] : undefined}
             onName={openCard}
+            onReply={loggedIn && irc.canSend ? startReply : undefined}
           />
         ))}
         </div>
@@ -302,6 +323,18 @@ export function ChatPanel({ channels, active, onActive, loggedIn, userId, onLogi
 
       {pickerOpen && target && (
         <EmotePicker channel={target} userId={userId} onPick={insertText} onClose={() => setPickerOpen(false)} />
+      )}
+
+      {replyTo && (
+        <div className="reply-bar">
+          <Icon name="reply" size={14} />
+          <span className="reply-bar-text">
+            {t("Antwort an")} <b>@{replyTo.name}</b>: {replyTo.text}
+          </span>
+          <button title={t("Antwort abbrechen (Esc)")} onClick={() => setReplyTo(null)}>
+            <Icon name="close" size={14} />
+          </button>
+        </div>
       )}
 
       <div className="chat-input">
@@ -324,7 +357,9 @@ export function ChatPanel({ channels, active, onActive, loggedIn, userId, onLogi
                   setInput(e.target.value);
                 }}
                 onKeyDown={onKey}
-                placeholder={target ? t("Nachricht an #{ch}", { ch: target }) : t("Kein Kanal")}
+                placeholder={
+                  replyTo ? t("Antwort an @{name}…", { name: replyTo.name }) : target ? t("Nachricht an #{ch}", { ch: target }) : t("Kein Kanal")
+                }
                 maxLength={500}
               />
               <button

@@ -130,4 +130,19 @@ export const playerChat: Record<string, string> = {
   "Alle anzeigen": "Show all",
   "Inventar auf twitch.tv ↗": "Inventory on twitch.tv ↗",
   "Alle Kampagnen ↗": "All campaigns ↗",
+
+  // Antworten
+  "Antworten": "Reply",
+  "Antwort abbrechen (Esc)": "Cancel reply (Esc)",
+  "Antwort an @{name}…": "Reply to @{name}…",
+
+  // Folgen
+  "{name} folgen": "Follow {name}",
+  "Du folgst {name} – klicken zum Entfolgen": "You follow {name} – click to unfollow",
+  "Nochmal klicken zum Entfolgen": "Click again to unfollow",
+  "Entfolgen?": "Unfollow?",
+  "Du folgst jetzt {name}": "You are now following {name}",
+  "{name} entfolgt": "Unfollowed {name}",
+  "Twitch erlaubt das nur auf der Webseite – im Browser geöffnet": "Twitch only allows this on its website – opened in your browser",
+  "Folgen fehlgeschlagen": "Follow failed",
 };

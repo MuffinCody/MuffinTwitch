@@ -9,6 +9,8 @@ import { points } from "./lib/points";
 import { getSettings, recordWatch, updateSettings, useSettings } from "./lib/settings";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useT } from "./lib/i18n";
+import { actionForKey, isTyping, keyName, playerBus } from "./lib/shortcuts";
+import { setFollowUser } from "./lib/follows";
 import { MultiView, type Layout } from "./components/MultiView";
 import { PlayerTile } from "./components/PlayerTile";
 import { ChatPanel } from "./components/ChatPanel";
@@ -50,7 +52,9 @@ export default function App() {
   const t = useT();
   const [auth, setAuth] = useState<AuthInfo | null>(null);
   const [me, setMe] = useState<HelixUser | null>(null);
-  const [channels, setChannels] = useState<string[]>(() => getSettings().lastChannels.slice(0, MAX_STREAMS));
+  const [channels, setChannels] = useState<string[]>(() =>
+    getSettings().restoreChannels ? getSettings().lastChannels.slice(0, MAX_STREAMS) : [],
+  );
   const [layout, setLayout] = useState<Layout>("grid");
   const [focused, setFocused] = useState<string | null>(null);
   const [audio, setAudio] = useState<string | null>(() => getSettings().lastChannels[0] ?? null);
@@ -179,6 +183,11 @@ export default function App() {
     }
   }, [auth]);
 
+  // Folgen-Knopf: nur mit twitch.tv-Login (Twitch-Webseiten-Token)
+  useEffect(() => {
+    setFollowUser(auth?.web && auth.user_id ? auth.user_id : null, refreshFollowed);
+  }, [auth, refreshFollowed]);
+
   useEffect(() => {
     refreshFollowed();
     const t = window.setInterval(refreshFollowed, Math.max(1, settings.followRefreshMin) * 60_000);
@@ -291,6 +300,47 @@ export default function App() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  // ---------- Player-Tastenkürzel (in den Einstellungen änderbar) ----------
+  const shortcutRef = useRef<(e: KeyboardEvent) => void>(() => {});
+  shortcutRef.current = (e) => {
+    if (!settings.shortcutsEnabled || showSettings || e.ctrlKey || e.altKey || e.metaKey) return;
+    if (isTyping(e) || channels.length === 0) return;
+    const action = actionForKey(keyName(e));
+    if (!action) return;
+    e.preventDefault();
+    // Fokus auf einem Knopf würde z. B. bei der Leertaste zusätzlich klicken
+    if (document.activeElement instanceof HTMLButtonElement) document.activeElement.blur();
+    const target =
+      fullscreen ?? (audio && channels.includes(audio) ? audio : layout === "focus" && focused ? focused : channels[0]);
+    switch (action) {
+      case "fullscreen":
+        setFullscreen((f) => (f ? null : target));
+        setAudio(target);
+        setActiveChat(target);
+        break;
+      case "chat":
+        if (fullscreen) updateSettings({ fsChat: !settings.fsChat });
+        else toggleChat();
+        break;
+      case "nextStream": {
+        if (channels.length < 2) break;
+        const next = channels[(channels.indexOf(target) + 1) % channels.length];
+        setAudio(next);
+        setActiveChat(next);
+        if (fullscreen) setFullscreen(next);
+        else if (layout === "focus") setFocused(next);
+        break;
+      }
+      default:
+        playerBus.emit(target, action);
+    }
+  };
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => shortcutRef.current(e);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   // ---------- Aktionen ----------
   const openChannel = (raw: string, addRequested: boolean) => {
     const login = normalizeLogin(raw);
@@ -351,6 +401,7 @@ export default function App() {
         isFavorite={settings.favorites.includes(login)}
         authKey={auth?.web ? `web:${auth.login}` : "anon"}
         together={together[login]}
+        channelId={streamInfo[login]?.user_id ?? avatars[login]?.id}
         onOpenPartner={(l) => openChannel(l, true)}
         fullscreen={fullscreen === login}
         onFullscreen={() => {

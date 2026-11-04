@@ -1,5 +1,6 @@
 mod auth;
 mod drops;
+mod follow;
 mod points;
 mod proxy;
 mod stream;
@@ -120,6 +121,7 @@ pub fn run() {
             drops::drops_inventory,
             drops::drops_campaigns,
             drops::claim_drop,
+            follow::follow_channel,
             points::points_menu,
             points::redeem_reward,
             auth::auth_get,

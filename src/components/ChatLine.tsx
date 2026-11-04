@@ -1,6 +1,7 @@
 import { memo } from "react";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import type { ChatMsg } from "../lib/chat";
+import { canReply, type ChatMsg } from "../lib/chat";
+import { Icon } from "./Icon";
 import { tokenize, nameColor } from "../lib/tokenize";
 import { findBadge } from "../lib/badges";
 import { emoteVersion, type Emote } from "../lib/emotes";
@@ -55,6 +56,8 @@ interface Props {
   /** Geteilter Chat: Kanal, aus dem die Nachricht stammt */
   sourceUser?: { display_name: string; profile_image_url: string };
   onName?: (msg: ChatMsg, x: number, y: number) => void;
+  /** Antworten-Knopf (nur angemeldet) */
+  onReply?: (msg: ChatMsg) => void;
   /** Sprache – nur damit die Zeile bei einem Sprachwechsel neu gezeichnet wird */
   lang: string;
 }
@@ -67,7 +70,7 @@ function ChannelTag({ channel, avatar }: { channel: string; avatar?: string }) {
   );
 }
 
-function ChatLineInner({ msg, showChannel, showTimestamp, showBadges, showPaints, chanAvatar, sourceUser, onName }: Props) {
+function ChatLineInner({ msg, showChannel, showTimestamp, showBadges, showPaints, chanAvatar, sourceUser, onName, onReply }: Props) {
   if (msg.kind === "system") {
     return (
       <div className="line system">
@@ -89,9 +92,14 @@ function ChatLineInner({ msg, showChannel, showTimestamp, showBadges, showPaints
 
   return (
     <div className={cls}>
+      {onReply && canReply(msg) && (
+        <button className="reply-btn" title={t("Antworten")} onClick={() => onReply(msg)}>
+          <Icon name="reply" size={15} />
+        </button>
+      )}
       {msg.kind === "usernotice" && msg.systemText && <div className="sys-text">{msg.systemText}</div>}
       {msg.reply && (
-        <div className="reply">
+        <div className="reply" title={`@${msg.reply.name}: ${msg.reply.text}`}>
           ↳ {t("Antwort an")} <b>@{msg.reply.name}</b>: {msg.reply.text}
         </div>
       )}

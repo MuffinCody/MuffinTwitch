@@ -4,9 +4,109 @@ import { api, type AuthInfo, type DeviceCode } from "../lib/api";
 import { CHAT_FONTS, useSettings, updateSettings } from "../lib/settings";
 import { playMentionSound } from "../lib/sound";
 import { LANGUAGES, useT, type Lang } from "../lib/i18n";
+import { getVersion } from "@tauri-apps/api/app";
+import { Icon } from "./Icon";
+import {
+  DEFAULT_SHORTCUTS,
+  RESERVED_KEYS,
+  SHORTCUT_ACTIONS,
+  currentShortcuts,
+  keyLabel,
+  keyName,
+  type PlayerAction,
+} from "../lib/shortcuts";
 
-export type SettingsTab = "account" | "chat" | "player";
+export type SettingsTab = "general" | "account" | "chat" | "player";
 type Tab = SettingsTab;
+
+const NAV: { id: Tab; label: string; icon: string }[] = [
+  { id: "general", label: "Allgemein", icon: "sliders" },
+  { id: "account", label: "Konto", icon: "user" },
+  { id: "chat", label: "Chat", icon: "chat" },
+  { id: "player", label: "Player", icon: "tv" },
+];
+
+/** Tastenkürzel-Liste mit "Taste drücken…"-Aufnahme */
+function ShortcutEditor() {
+  const s = useSettings();
+  const t = useT();
+  const [recording, setRecording] = useState<PlayerAction | null>(null);
+  const map = { ...DEFAULT_SHORTCUTS, ...s.shortcuts };
+
+  useEffect(() => {
+    if (!recording) return;
+    const onKey = (e: KeyboardEvent) => {
+      // Vor allen anderen Tastatur-Handlern abfangen (Esc schließt sonst das Fenster)
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+      if (e.key === "Escape") {
+        setRecording(null);
+        return;
+      }
+      const next: Record<string, string> = { ...currentShortcuts() };
+      if (e.key === "Backspace" || e.key === "Delete") {
+        next[recording] = "";
+      } else {
+        if (RESERVED_KEYS.has(e.key) || e.ctrlKey || e.altKey || e.metaKey) return;
+        const k = keyName(e);
+        // Taste war schon belegt → dort freigeben
+        for (const a of Object.keys(next)) if (next[a] === k) next[a] = "";
+        next[recording] = k;
+      }
+      updateSettings({ shortcuts: next });
+      setRecording(null);
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [recording]);
+
+  return (
+    <>
+      <Check
+        label={t("Tastenkürzel aktivieren")}
+        hint={t("wirken auf den hörbaren Stream bzw. den Stream im Vollbild")}
+        checked={s.shortcutsEnabled}
+        onChange={(v) => updateSettings({ shortcutsEnabled: v })}
+      />
+      <div className={`shortcut-list ${s.shortcutsEnabled ? "" : "disabled"}`}>
+        {SHORTCUT_ACTIONS.map((a) => (
+          <div key={a.id} className="shortcut-row">
+            <span>{t(a.label)}</span>
+            <button
+              className={`kbd-btn ${recording === a.id ? "recording" : ""} ${map[a.id] ? "" : "unset"}`}
+              disabled={!s.shortcutsEnabled}
+              onClick={() => setRecording(recording === a.id ? null : a.id)}
+              title={t("Klicken und neue Taste drücken")}
+            >
+              {recording === a.id ? t("Taste drücken…") : keyLabel(map[a.id])}
+            </button>
+          </div>
+        ))}
+        <div className="shortcut-row fixed">
+          <span>{t("Kanalliste ein-/ausblenden")}</span>
+          <kbd>{t("Strg")}+B</kbd>
+        </div>
+        <div className="shortcut-row fixed">
+          <span>{t("Chat-Leiste ein-/ausblenden")}</span>
+          <kbd>{t("Strg")}+J</kbd>
+        </div>
+        <div className="shortcut-row fixed">
+          <span>{t("Vollbild beenden")}</span>
+          <kbd>Esc</kbd>
+        </div>
+      </div>
+      <div className="row">
+        <p className="muted small" style={{ flex: 1 }}>
+          {recording
+            ? t("Esc: abbrechen · Entf/Rücktaste: Kürzel entfernen")
+            : t("Auf eine Taste klicken, um sie zu ändern.")}
+        </p>
+        <button onClick={() => updateSettings({ shortcuts: {} })}>{t("Standard wiederherstellen")}</button>
+      </div>
+    </>
+  );
+}
 
 interface Props {
   auth: AuthInfo | null;
@@ -55,7 +155,11 @@ function Check(props: { label: string; hint?: string; checked: boolean; onChange
 export function SettingsDialog({ auth, initialTab, onClose, onAuthChanged }: Props) {
   const s = useSettings();
   const t = useT();
-  const [tab, setTab] = useState<Tab>(initialTab ?? (auth?.logged_in ? "chat" : "account"));
+  const [tab, setTab] = useState<Tab>(initialTab ?? "general");
+  const [version, setVersion] = useState("");
+  useEffect(() => {
+    getVersion().then(setVersion).catch(() => {});
+  }, []);
   const [clientId, setClientId] = useState(auth?.client_id ?? "");
   const [device, setDevice] = useState<DeviceCode | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -114,32 +218,94 @@ export function SettingsDialog({ auth, initialTab, onClose, onAuthChanged }: Pro
 
   return (
     <div className="modal-bg" onMouseDown={onClose}>
-      <div className="modal" onMouseDown={(e) => e.stopPropagation()}>
-        <div className="modal-head">
+      <div className="modal settings-modal" onMouseDown={(e) => e.stopPropagation()}>
+        <nav className="settings-nav">
           <h2>{t("Einstellungen")}</h2>
-          <button onClick={onClose}>✕</button>
+          {NAV.map((n) => (
+            <button key={n.id} className={tab === n.id ? "on" : ""} onClick={() => setTab(n.id)}>
+              <Icon name={n.icon} size={17} />
+              {t(n.label)}
+            </button>
+          ))}
+          <div className="spacer" />
+          {version && <div className="settings-version">MuffinTwitch v{version}</div>}
+        </nav>
+
+        <div className="settings-body">
+        <div className="modal-head">
+          <h2>{t(NAV.find((n) => n.id === tab)!.label)}</h2>
+          <button onClick={onClose} title={t("Schließen")}>✕</button>
         </div>
 
-        <label className="row lang-row">
-          <span className="row-label">🌐 {t("Sprache")} / Language</span>
-          <div className="seg lang-seg">
-            {LANGUAGES.map((l) => (
-              <button
-                key={l.id}
-                className={s.language === l.id ? "on" : ""}
-                onClick={() => updateSettings({ language: l.id as Lang })}
-              >
-                {l.label}
-              </button>
-            ))}
-          </div>
-        </label>
+        {tab === "general" && (
+          <>
+            <section>
+              <h3>{t("Sprache")} / Language</h3>
+              <div className="seg lang-seg">
+                {LANGUAGES.map((l) => (
+                  <button
+                    key={l.id}
+                    className={s.language === l.id ? "on" : ""}
+                    onClick={() => updateSettings({ language: l.id as Lang })}
+                  >
+                    {l.label}
+                  </button>
+                ))}
+              </div>
+            </section>
 
-        <div className="tabs">
-          <button className={tab === "account" ? "on" : ""} onClick={() => setTab("account")}>{t("Konto")}</button>
-          <button className={tab === "chat" ? "on" : ""} onClick={() => setTab("chat")}>Chat</button>
-          <button className={tab === "player" ? "on" : ""} onClick={() => setTab("player")}>Player</button>
-        </div>
+            <section>
+              <h3>{t("Start")}</h3>
+              <Check
+                label={t("Zuletzt geöffnete Kanäle beim Start wieder öffnen")}
+                checked={s.restoreChannels}
+                onChange={(v) => updateSettings({ restoreChannels: v })}
+              />
+            </section>
+
+            <section>
+              <h3>{t("Gefolgte Kanäle")}</h3>
+              <label className="row">
+                <span className="row-label">{t("Automatisch aktualisieren")}</span>
+                <select
+                  value={s.followRefreshMin}
+                  onChange={(e) => updateSettings({ followRefreshMin: Number(e.target.value) })}
+                >
+                  {[1, 2, 5, 10, 15, 30].map((m) => (
+                    <option key={m} value={m}>
+                      {t("alle {m} Min.", { m })}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="row">
+                <span className="row-label">{t("Sortierung")}</span>
+                <select
+                  value={s.followSort}
+                  onChange={(e) => updateSettings({ followSort: e.target.value as typeof s.followSort })}
+                >
+                  <option value="viewers">{t("Zuschauer")}</option>
+                  <option value="recent">{t("Zuletzt gesehen")}</option>
+                  <option value="recommended">{t("Empfohlen")}</option>
+                </select>
+              </label>
+              <p className="muted small">{t("Mit ⟳ neben „Gefolgt · Live“ jederzeit sofort aktualisieren.")}</p>
+            </section>
+
+            <section>
+              <h3>{t("Über")}</h3>
+              <div className="row">
+                <span className="row-label">MuffinTwitch {version && `v${version}`}</span>
+                <div className="spacer" />
+                <button onClick={() => openUrl("https://github.com/MuffinCody/MuffinTwitch").catch(() => {})}>GitHub</button>
+                <button onClick={() => openUrl("https://github.com/MuffinCody/MuffinTwitch/releases/latest").catch(() => {})}>
+                  {t("Nach Updates suchen")}
+                </button>
+              </div>
+              <p className="muted small">{t("Inoffizielles Fanprojekt – steht in keiner Verbindung zu Twitch Interactive, Inc.")}</p>
+            </section>
+          </>
+        )}
 
         {tab === "account" && (
           <section>
@@ -171,23 +337,7 @@ export function SettingsDialog({ auth, initialTab, onClose, onAuthChanged }: Pro
               )}
             </div>
 
-            <h3>{t("Gefolgte Kanäle")}</h3>
-            <label className="row">
-              <span className="row-label">{t("Automatisch aktualisieren")}</span>
-              <select
-                value={s.followRefreshMin}
-                onChange={(e) => updateSettings({ followRefreshMin: Number(e.target.value) })}
-              >
-                {[1, 2, 5, 10, 15, 30].map((m) => (
-                  <option key={m} value={m}>
-                    {t("alle {m} Min.", { m })}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <p className="muted small">{t("Mit ⟳ neben „Gefolgt · Live“ jederzeit sofort aktualisieren.")}</p>
-
-            <h3>{t("Kanalpunkte")}</h3>
+            <h3 style={{ marginTop: 18 }}>{t("Kanalpunkte")}</h3>
             <Check
               label={t("Bonus-Truhe automatisch einsammeln")}
               hint={t("für alle geöffneten Kanäle")}
@@ -334,7 +484,9 @@ export function SettingsDialog({ auth, initialTab, onClose, onAuthChanged }: Pro
         )}
 
         {tab === "player" && (
+          <>
           <section>
+            <h3>{t("Wiedergabe")}</h3>
             <Check label={t("Niedrige Latenz")} hint={t("holt Verzögerung automatisch auf")} checked={s.lowLatency} onChange={(v) => updateSettings({ lowLatency: v })} />
             <Check label={t("Multiview: nur den angeklickten Stream hörbar")} checked={s.audioFocus} onChange={(v) => updateSettings({ audioFocus: v })} />
             <label className="row">
@@ -348,7 +500,13 @@ export function SettingsDialog({ auth, initialTab, onClose, onAuthChanged }: Pro
               {t("Tipp: „Auto“ schont im Multiview CPU/GPU deutlich. Änderungen gelten für neu geöffnete Streams.")}
             </p>
           </section>
+          <section>
+            <h3>{t("Tastenkürzel")}</h3>
+            <ShortcutEditor />
+          </section>
+          </>
         )}
+        </div>
       </div>
     </div>
   );

@@ -57,6 +57,11 @@ export interface Settings {
   favGames: { id: string; name: string; box_art_url: string }[];
   /** Kategorien in der Seitenleiste: Top oder nur Favoriten */
   categoryFilter: "top" | "fav";
+  /** Tastenkürzel für den Player (Aktion → Taste, "" = aus) */
+  shortcuts: Record<string, string>;
+  shortcutsEnabled: boolean;
+  /** Beim Start die zuletzt geöffneten Kanäle wieder öffnen */
+  restoreChannels: boolean;
 }
 
 const DEFAULTS: Settings = {
@@ -96,6 +101,9 @@ const DEFAULTS: Settings = {
   watchStats: {},
   favGames: [],
   categoryFilter: "top",
+  shortcuts: {},
+  shortcutsEnabled: true,
+  restoreChannels: true,
 };
 
 /** Merkt, dass ein Kanal gerade geschaut wird (+ Minuten). */

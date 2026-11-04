@@ -456,10 +456,26 @@ export function leaveChannel(channel: string) {
 }
 
 /** Eigene Nachricht senden und lokal anzeigen (Twitch schickt kein Echo). */
-export function sendMessage(channel: string, text: string): boolean {
+export interface ReplyTarget {
+  /** Twitch-Nachrichten-ID */
+  id: string;
+  name: string;
+  text: string;
+}
+
+/** Nur echte Twitch-Nachrichten (UUID) kann man beantworten */
+export function canReply(m: ChatMsg) {
+  return (m.kind === "chat" || m.kind === "action") && !m.deleted && /^[0-9a-f-]{36}$/i.test(m.id);
+}
+
+export function sendMessage(channel: string, text: string, reply?: ReplyTarget): boolean {
   text = text.trim();
   if (!text) return false;
-  if (!irc.send(channel, text)) return false;
+  const isCommand = text.startsWith("/") || text.startsWith(".");
+  if (reply && isCommand) reply = undefined;
+  // Wie die Twitch-Webseite: Antworten beginnen mit "@name "
+  const wire = reply && !text.toLowerCase().startsWith(`@${reply.name.toLowerCase()}`) ? `@${reply.name} ${text}` : text;
+  if (!irc.send(channel, wire, reply?.id)) return false;
   sendPresence(chat.rooms.get(channel)?.roomId);
   const us = chat.userState.get(channel);
   let kind: MsgKind = "chat";
@@ -482,6 +498,7 @@ export function sendMessage(channel: string, text: string): boolean {
     color: us?.tags.color,
     badges: badgesFromTag(us?.tags.badges),
     text: body,
+    reply: reply ? { name: reply.name, text: reply.text } : undefined,
     self: true,
   });
   return true;

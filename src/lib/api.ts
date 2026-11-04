@@ -97,6 +97,14 @@ export const helixApi = {
     }
     return out;
   },
+  /** Folgt der Nutzer diesem Kanal? */
+  async isFollowing(userId: string, broadcasterId: string): Promise<boolean> {
+    const r = await api.helix<{ data: unknown[] }>("channels/followed", [
+      ["user_id", userId],
+      ["broadcaster_id", broadcasterId],
+    ]);
+    return r.data.length > 0;
+  },
   async followedStreams(userId: string): Promise<HelixStream[]> {
     const r = await api.helix<{ data: HelixStream[] }>("streams/followed", [
       ["user_id", userId],

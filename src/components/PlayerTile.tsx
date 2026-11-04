@@ -4,6 +4,8 @@ import type { HelixStream, HelixUser } from "../lib/api";
 import { useSettings, updateSettings } from "../lib/settings";
 import { Icon } from "./Icon";
 import { t, locale } from "../lib/i18n";
+import { playerBus, type PlayerAction } from "../lib/shortcuts";
+import { toggleFollow, useFollow } from "../lib/follows";
 
 interface Props {
   login: string;
@@ -20,6 +22,8 @@ interface Props {
   /** Stream Together: Partner dieses Streams */
   together?: HelixUser[];
   onOpenPartner(login: string): void;
+  /** Twitch-ID des Kanals (für Folgen) */
+  channelId?: string;
   onAudio(): void;
   onClose(): void;
   onFocus(): void;
@@ -144,6 +148,39 @@ export function PlayerTile(p: Props) {
   };
   useEffect(() => () => window.clearTimeout(idleTimer.current), []);
 
+  // Kurze Einblendung mitten im Bild (Tastenkürzel, Folgen …)
+  const [osd, setOsd] = useState<{ text: string; icon?: string; n: number } | null>(null);
+  const osdTimer = useRef<number | undefined>(undefined);
+  const showOsd = (text: string, icon?: string, ms = 900) => {
+    setOsd((o) => ({ text, icon, n: (o?.n ?? 0) + 1 }));
+    window.clearTimeout(osdTimer.current);
+    osdTimer.current = window.setTimeout(() => setOsd(null), ms);
+  };
+  useEffect(() => () => window.clearTimeout(osdTimer.current), []);
+
+  // Folgen
+  const follow = useFollow(p.channelId);
+  const [confirmUnfollow, setConfirmUnfollow] = useState(false);
+  useEffect(() => {
+    if (!confirmUnfollow) return;
+    const tm = window.setTimeout(() => setConfirmUnfollow(false), 3000);
+    return () => window.clearTimeout(tm);
+  }, [confirmUnfollow]);
+  const onFollowClick = async () => {
+    if (!p.channelId || follow.busy) return;
+    if (follow.following && !confirmUnfollow) {
+      setConfirmUnfollow(true);
+      return;
+    }
+    setConfirmUnfollow(false);
+    const name = p.info?.user_name ?? p.login;
+    const wasFollowing = !!follow.following;
+    const r = await toggleFollow(p.channelId, p.login);
+    if (r === "ok") showOsd(wasFollowing ? t("{name} entfolgt", { name }) : t("Du folgst jetzt {name}", { name }), wasFollowing ? "heart-outline" : "heart", 1800);
+    else if (r === "browser") showOsd(t("Twitch erlaubt das nur auf der Webseite – im Browser geöffnet"), "heart-outline", 3500);
+    else showOsd(t("Folgen fehlgeschlagen"), undefined, 3000);
+  };
+
   const toggleMute = () => {
     if (autoplayBlocked) {
       unlockAudio();
@@ -160,6 +197,50 @@ export function PlayerTile(p: Props) {
     if (v?.buffered.length) v.currentTime = v.buffered.end(v.buffered.length - 1) - 1;
     v?.play().catch(() => {});
   };
+
+  const changeVolume = (delta: number) => {
+    const v = Math.round(Math.max(0, Math.min(1, (effectiveMuted ? 0 : volume) + delta)) * 100) / 100;
+    setVolume(v);
+    setUserMuted(false);
+    setAutoplayBlocked(false);
+    if (!p.audible) p.onAudio();
+    updateSettings({ volume: v });
+    showOsd(`${Math.round(v * 100)} %`, v === 0 ? "volume-off" : v > 0.5 ? "volume-high" : "volume-low");
+  };
+
+  // Tastenkürzel (App schickt die Befehle an den hörbaren / Vollbild-Stream)
+  const commandRef = useRef<(a: PlayerAction) => void>(() => {});
+  commandRef.current = (a) => {
+    const v = videoRef.current;
+    wake();
+    switch (a) {
+      case "playPause":
+        showOsd(v?.paused ? t("Abspielen") : t("Pause"), v?.paused ? "play" : "pause");
+        togglePlay();
+        break;
+      case "mute": {
+        const willMute = !effectiveMuted;
+        toggleMute();
+        showOsd(willMute ? t("Stumm") : `${Math.round(volume * 100)} %`, willMute ? "volume-off" : "volume-high");
+        break;
+      }
+      case "volumeUp":
+        changeVolume(0.05);
+        break;
+      case "volumeDown":
+        changeVolume(-0.05);
+        break;
+      case "live":
+        goLive();
+        showOsd("LIVE");
+        break;
+      case "reload":
+        setReload((r) => r + 1);
+        showOsd(t("Neu laden"), "refresh");
+        break;
+    }
+  };
+  useEffect(() => playerBus.on((login, a) => login === p.login && commandRef.current(a)), [p.login]);
 
   const currentLabel = levels.find((l) => l.index === level)?.label ?? "Auto";
   const showControls = !idle || menu || paused || status.kind !== "playing";
@@ -217,6 +298,13 @@ export function PlayerTile(p: Props) {
         </div>
       )}
 
+      {osd && (
+        <div key={osd.n} className="osd">
+          {osd.icon && <Icon name={osd.icon} size={22} />}
+          <span>{osd.text}</span>
+        </div>
+      )}
+
       {p.together && p.together.length > 0 && (
         <div className="together-badge" title={t("Streamt gemeinsam mit {names}", { names: p.together.map((u) => u.display_name).join(", ") })}>
           {p.together.slice(0, 4).map((u) => (
@@ -253,6 +341,23 @@ export function PlayerTile(p: Props) {
           )}
         </div>
         <div className="tile-actions" onMouseDown={(e) => e.stopPropagation()} onDoubleClick={(e) => e.stopPropagation()}>
+          {follow.enabled && follow.following !== undefined && (
+            <button
+              className={`pbtn follow-btn ${follow.following ? "following" : ""} ${confirmUnfollow ? "confirm" : ""}`}
+              disabled={follow.busy}
+              title={
+                confirmUnfollow
+                  ? t("Nochmal klicken zum Entfolgen")
+                  : follow.following
+                    ? t("Du folgst {name} – klicken zum Entfolgen", { name: p.info?.user_name ?? p.login })
+                    : t("{name} folgen", { name: p.info?.user_name ?? p.login })
+              }
+              onClick={onFollowClick}
+            >
+              <Icon name={follow.following && !confirmUnfollow ? "heart" : "heart-outline"} size={20} />
+              {confirmUnfollow && <span className="follow-confirm">{t("Entfolgen?")}</span>}
+            </button>
+          )}
           <button className="pbtn" title={p.isFavorite ? t("Aus Favoriten entfernen") : t("Zu Favoriten")} onClick={p.onToggleFavorite}>
             <Icon name={p.isFavorite ? "star" : "star-outline"} size={20} />
           </button>
@@ -331,11 +436,6 @@ export function PlayerTile(p: Props) {
             </div>
           )}
         </div>
-        {p.fullscreen && (
-          <button className="pbtn" onClick={p.onChat} title={t("Chat ein-/ausblenden")}>
-            <Icon name="chat" size={20} />
-          </button>
-        )}
         <button className="pbtn" onClick={fullscreen} title={p.fullscreen ? t("Vollbild beenden (Esc)") : t("Vollbild (Doppelklick)")}>
           <Icon name={p.fullscreen ? "fullscreen-exit" : "fullscreen"} size={24} />
         </button>
