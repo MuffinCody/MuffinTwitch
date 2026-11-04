@@ -42,6 +42,8 @@ interface Options {
   preferSource: boolean;
   onStatus(s: PlayerStatus): void;
   onLevels(levels: QualityOption[], current: number): void;
+  /** Browser hat Ton beim Autostart verboten → Video läuft stumm */
+  onAutoplayMuted?(): void;
 }
 
 export async function createPlayer(
@@ -92,12 +94,27 @@ export async function createPlayer(
       hls.currentLevel = best;
     }
     opts.onLevels(levels(), hls.manualLevel);
-    video.play().catch(() => {
-      // Autoplay mit Ton blockiert → stumm starten
-      video.muted = true;
-      video.play().catch(() => {});
-    });
+    startPlayback(0);
   });
+
+  /**
+   * Abspielen starten. Wichtig: Nur stummschalten, wenn der Browser Ton wirklich verbietet
+   * (NotAllowedError). Ein beim Start oft vorkommender "AbortError" (Laden unterbrochen)
+   * führte früher fälschlich zu dauerhaft stummem Video, während die Anzeige "Ton an" zeigte.
+   */
+  const startPlayback = (attempt: number) => {
+    if (destroyed) return;
+    video.play().catch((e: DOMException) => {
+      if (destroyed) return;
+      if (e?.name === "NotAllowedError") {
+        video.muted = true;
+        opts.onAutoplayMuted?.();
+        video.play().catch(() => {});
+      } else if (attempt < 4) {
+        window.setTimeout(() => startPlayback(attempt + 1), 400 * (attempt + 1));
+      }
+    });
+  };
 
   hls.on(Hls.Events.LEVEL_SWITCHED, () => opts.onLevels(levels(), hls.manualLevel));
   hls.on(Hls.Events.FRAG_BUFFERED, () => opts.onStatus({ kind: "playing" }));

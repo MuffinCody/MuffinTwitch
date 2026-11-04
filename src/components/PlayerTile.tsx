@@ -42,6 +42,7 @@ export function PlayerTile(p: Props) {
   const [levels, setLevels] = useState<QualityOption[]>([]);
   const [level, setLevel] = useState(-1);
   const [reload, setReload] = useState(0);
+  const [autoplayBlocked, setAutoplayBlocked] = useState(false);
   const [volume, setVolume] = useState(settings.volume);
   const [userMuted, setUserMuted] = useState(false);
   const [paused, setPaused] = useState(false);
@@ -60,6 +61,7 @@ export function PlayerTile(p: Props) {
         setLevels(l);
         setLevel(cur);
       },
+      onAutoplayMuted: () => !cancelled && setAutoplayBlocked(true),
     })
       .then((h) => {
         if (cancelled) h.destroy();
@@ -81,13 +83,26 @@ export function PlayerTile(p: Props) {
     return () => window.clearTimeout(t);
   }, [status]);
 
-  // Lautstärke / Audio-Fokus
-  useEffect(() => {
+  // Lautstärke / Audio-Fokus – Video-Element immer exakt wie die Anzeige einstellen
+  const syncAudio = () => {
     const v = videoRef.current;
     if (!v) return;
     v.volume = volume;
-    v.muted = userMuted || !p.audible;
-  }, [volume, userMuted, p.audible]);
+    v.muted = autoplayBlocked || userMuted || !p.audible;
+  };
+  useEffect(syncAudio, [volume, userMuted, p.audible, autoplayBlocked]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /** Nach einer Autoplay-Sperre: Klick des Nutzers gibt den Ton frei */
+  const unlockAudio = () => {
+    setAutoplayBlocked(false);
+    setUserMuted(false);
+    if (!p.audible) p.onAudio();
+    const v = videoRef.current;
+    if (v) {
+      v.muted = false;
+      v.play().catch(() => {});
+    }
+  };
 
   // Nach Pausieren auf Live-Kante springen
   const togglePlay = () => {
@@ -115,7 +130,7 @@ export function PlayerTile(p: Props) {
   };
   useEffect(() => () => window.clearTimeout(clickTimer.current), []);
 
-  const effectiveMuted = userMuted || !p.audible;
+  const effectiveMuted = autoplayBlocked || userMuted || !p.audible;
 
   // Steuerelemente nach kurzer Inaktivität ausblenden (wie bei YouTube)
   const [idle, setIdle] = useState(false);
@@ -129,6 +144,10 @@ export function PlayerTile(p: Props) {
   useEffect(() => () => window.clearTimeout(idleTimer.current), []);
 
   const toggleMute = () => {
+    if (autoplayBlocked) {
+      unlockAudio();
+      return;
+    }
     if (!p.audible) {
       p.onAudio();
       setUserMuted(false);
@@ -163,8 +182,20 @@ export function PlayerTile(p: Props) {
         autoPlay
         onPause={() => setPaused(true)}
         onPlay={() => setPaused(false)}
+        onPlaying={syncAudio}
         onClick={onVideoClick}
       />
+
+      {autoplayBlocked && p.audible && status.kind === "playing" && (
+        <button
+          className="unmute-hint"
+          onMouseDown={(e) => e.stopPropagation()}
+          onDoubleClick={(e) => e.stopPropagation()}
+          onClick={unlockAudio}
+        >
+          <Icon name="volume-off" size={18} /> Klicken für Ton
+        </button>
+      )}
 
       {status.kind !== "playing" && (
         <div className="tile-status">
@@ -257,6 +288,7 @@ export function PlayerTile(p: Props) {
               const v = Number(e.target.value);
               setVolume(v);
               setUserMuted(false);
+              setAutoplayBlocked(false);
               if (!p.audible) p.onAudio();
               updateSettings({ volume: v });
             }}

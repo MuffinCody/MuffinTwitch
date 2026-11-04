@@ -382,3 +382,8 @@ button.brand:hover { background: var(--bg-4) !important; }
 .pm-info { margin: 8px 12px 0; padding: 8px 10px; border-radius: 8px; background: rgba(145, 70, 255, 0.12); border: 1px solid rgba(145, 70, 255, 0.35); font-size: 12px; line-height: 1.45; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
 .drops-body .pm-info { margin: 8px 0 0; }
 
+
+/* Ton nach Autoplay-Sperre freigeben */
+.unmute-hint { position: absolute; left: 12px; bottom: 56px; z-index: 2; display: flex; align-items: center; gap: 6px; background: rgba(0,0,0,0.75) !important; color: #fff; border-radius: 18px; padding: 6px 12px; font-size: 13px; font-weight: 600; }
+.unmute-hint:hover { background: var(--accent) !important; }
+
