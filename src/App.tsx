@@ -149,19 +149,56 @@ export default function App() {
     points.setChannels(channels, !!auth?.web);
   }, [channels.join(","), auth?.web]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ---------- Stream-Infos (Helix, nur mit Login) ----------
+  // ---------- Gefolgte Live-Kanäle (eigener Takt + Aktualisieren-Knopf) ----------
+  const followedRef = useRef<HelixStream[]>([]);
+  const [followLoading, setFollowLoading] = useState(false);
+  const [followUpdated, setFollowUpdated] = useState<number | null>(null);
+  const refreshFollowed = useCallback(async () => {
+    if (!auth?.logged_in || !auth.user_id) return;
+    setFollowLoading(true);
+    try {
+      const fol = await helixApi.followedStreams(auth.user_id);
+      followedRef.current = fol;
+      setFollowed(fol);
+      setFollowUpdated(Date.now());
+      const need = fol.map((f) => f.user_login).filter((l) => !avatarsRef.current[l]);
+      if (need.length) {
+        const users = await helixApi.usersByLogin(need);
+        setAvatars((prev) => {
+          const next = { ...prev };
+          for (const u of users) next[u.login] = u;
+          return next;
+        });
+      }
+    } catch (e) {
+      console.warn("Helix (gefolgt)", e);
+    } finally {
+      setFollowLoading(false);
+    }
+  }, [auth]);
+
+  useEffect(() => {
+    refreshFollowed();
+    const t = window.setInterval(refreshFollowed, Math.max(1, settings.followRefreshMin) * 60_000);
+    return () => window.clearInterval(t);
+  }, [refreshFollowed, settings.followRefreshMin]);
+
+  const avatarsRef = useRef(avatars);
+  avatarsRef.current = avatars;
+
+  // ---------- Stream-Infos der offenen Kanäle/Favoriten (Helix, nur mit Login) ----------
   const refreshInfo = useCallback(async () => {
     if (!auth?.logged_in || !auth.user_id) return;
     try {
       const s = getSettings();
       const logins = [...new Set([...channels, ...s.favorites])];
-      const [fol, info] = await Promise.all([helixApi.followedStreams(auth.user_id), helixApi.streamsByLogin(logins)]);
-      setFollowed(fol);
+      const info = await helixApi.streamsByLogin(logins);
+      const fol = followedRef.current;
       const map: Record<string, HelixStream> = {};
       for (const x of [...fol, ...info]) map[x.user_login] = x;
       setStreamInfo(map);
 
-      const need = [...new Set([...logins, ...fol.map((f) => f.user_login)])].filter((l) => !avatars[l]);
+      const need = logins.filter((l) => !avatars[l]);
       if (need.length) {
         const users = await helixApi.usersByLogin(need);
         setAvatars((prev) => {
@@ -317,6 +354,7 @@ export default function App() {
         onFullscreen={() => {
           setFullscreen((f) => (f === login ? null : login));
           setAudio(login);
+          setActiveChat(login);
         }}
         onAudio={() => setAudio(login)}
         onClose={() => closeChannel(login)}
@@ -327,11 +365,30 @@ export default function App() {
         }}
         onChat={() => {
           setActiveChat(login);
-          if (!settings.chatOpen) updateSettings({ chatOpen: true });
+          // Im Vollbild: Chat-Overlay ein-/ausblenden
+          if (fullscreen === login) updateSettings({ fsChat: !settings.fsChat });
+          else if (!settings.chatOpen) updateSettings({ chatOpen: true });
         }}
         onToggleFavorite={() => toggleFavorite(login)}
       />
     </ErrorBoundary>
+  );
+
+  const chatPanel = (onHide: () => void) => (
+    <ChatPanel
+      channels={channels}
+      active={activeChat}
+      onActive={setActiveChat}
+      loggedIn={!!auth?.logged_in}
+      userId={auth?.user_id ?? null}
+      onLogin={login}
+      onHide={onHide}
+      channelAvatars={Object.fromEntries(channels.map((c) => [c, avatars[c]?.profile_image_url]))}
+      onOpenSettings={() => openSettings("chat")}
+      roomUsers={roomUsers}
+      together={together}
+      onOpenChannel={(l) => openChannel(l, false)}
+    />
   );
 
   return (
@@ -392,6 +449,9 @@ export default function App() {
           <ErrorBoundary name="sidebar">
             <Sidebar
               followed={followed}
+              followLoading={followLoading}
+              followUpdated={followUpdated}
+              onRefreshFollowed={refreshFollowed}
               favorites={settings.favorites}
               favInfo={favInfo}
               avatars={avatars}
@@ -450,23 +510,15 @@ export default function App() {
         {settings.chatOpen && !fullscreen && (
           <>
             <div className="resizer" onMouseDown={startResize} />
-            <ErrorBoundary name="chat">
-              <ChatPanel
-                channels={channels}
-                active={activeChat}
-                onActive={setActiveChat}
-                loggedIn={!!auth?.logged_in}
-                userId={auth?.user_id ?? null}
-                onLogin={login}
-                onHide={toggleChat}
-                channelAvatars={Object.fromEntries(channels.map((c) => [c, avatars[c]?.profile_image_url]))}
-                onOpenSettings={() => openSettings("chat")}
-                roomUsers={roomUsers}
-                together={together}
-                onOpenChannel={(l) => openChannel(l, false)}
-              />
-            </ErrorBoundary>
+            <ErrorBoundary name="chat">{chatPanel(toggleChat)}</ErrorBoundary>
           </>
+        )}
+
+        {/* Chat im Vollbild: halbtransparent über dem Video */}
+        {fullscreen && settings.fsChat && (
+          <div className="fs-chat">
+            <ErrorBoundary name="fs-chat">{chatPanel(() => updateSettings({ fsChat: false }))}</ErrorBoundary>
+          </div>
         )}
       </div>
 

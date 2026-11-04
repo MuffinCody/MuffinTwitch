@@ -154,6 +154,22 @@ export function SettingsDialog({ auth, initialTab, onClose, onAuthChanged }: Pro
               )}
             </div>
 
+            <h3>Gefolgte Kanäle</h3>
+            <label className="row">
+              <span className="row-label">Automatisch aktualisieren</span>
+              <select
+                value={s.followRefreshMin}
+                onChange={(e) => updateSettings({ followRefreshMin: Number(e.target.value) })}
+              >
+                {[1, 2, 5, 10, 15, 30].map((m) => (
+                  <option key={m} value={m}>
+                    alle {m} Min.
+                  </option>
+                ))}
+              </select>
+            </label>
+            <p className="muted small">Mit ⟳ neben „Gefolgt · Live“ jederzeit sofort aktualisieren.</p>
+
             <h3>Kanalpunkte</h3>
             <Check
               label="Bonus-Truhe automatisch einsammeln"

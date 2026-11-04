@@ -14,6 +14,10 @@ export interface Settings {
   volume: number;
   emoteScale: number;
   chatOpen: boolean;
+  /** Chat im Vollbild als Overlay anzeigen */
+  fsChat: boolean;
+  /** Gefolgte Live-Kanäle automatisch aktualisieren (Minuten) */
+  followRefreshMin: number;
   /** Zuletzt geöffnete Kanäle (werden beim Start wiederhergestellt) */
   lastChannels: string[];
 
@@ -65,6 +69,8 @@ const DEFAULTS: Settings = {
   volume: 0.6,
   emoteScale: 1,
   chatOpen: true,
+  fsChat: true,
+  followRefreshMin: 10,
   lastChannels: [],
   chatFontFamily: "Segoe UI",
   chatLineSpacing: 1.6,

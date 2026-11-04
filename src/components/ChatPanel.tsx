@@ -82,21 +82,64 @@ export function ChatPanel({ channels, active, onActive, loggedIn, userId, onLogi
   const room = target ? chat.rooms.get(target) : undefined;
   const frozen = paused || hoverPaused;
 
-  useLayoutEffect(() => {
+  // Am unteren Rand "kleben", solange nicht pausiert
+  const frozenRef = useRef(frozen);
+  frozenRef.current = frozen;
+  const stickToBottom = () => {
     const el = listRef.current;
-    if (el && !frozen) el.scrollTop = el.scrollHeight;
-  });
+    if (el && !frozenRef.current) el.scrollTop = el.scrollHeight;
+  };
+  useLayoutEffect(stickToBottom);
+
+  // Inhalt wird nachträglich höher (mehrzeilige Nachrichten, nachladende Emotes) → unten bleiben
+  const contentRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const c = contentRef.current;
+    if (!c) return;
+    const ro = new ResizeObserver(() => stickToBottom());
+    ro.observe(c);
+    return () => ro.disconnect();
+  }, []);
 
   useEffect(() => setPaused(false), [active]);
 
+  /**
+   * Pausieren nur durch echtes Hochscrollen des Nutzers (Mausrad / Scrollleiste),
+   * nicht durch Inhalt, der nachträglich höher wird.
+   */
+  const userScrolling = useRef(false);
+  /** Letzte Mausrad-Richtung war "hoch" → nicht sofort wieder fortsetzen */
+  const userScrollingUp = useRef(false);
+  const onWheel = (e: React.WheelEvent) => {
+    userScrollingUp.current = e.deltaY < 0;
+    if (e.deltaY < 0) {
+      userScrolling.current = true;
+      if (!paused) setPaused(true);
+    }
+  };
   const onScroll = () => {
     const el = listRef.current;
     if (!el) return;
-    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
-    if (atBottom === paused) setPaused(!atBottom);
+    const dist = el.scrollHeight - el.scrollTop - el.clientHeight;
+    // Beim Zurückscrollen etwas Spielraum: Zeilen werden beim Sichtbarwerden noch neu vermessen
+    const atBottom = dist < 40 || (paused && dist < 150 && !userScrollingUp.current);
+    if (atBottom) {
+      userScrolling.current = false;
+      if (paused) {
+        frozenRef.current = hoverPaused;
+        setPaused(false);
+        stickToBottom();
+      }
+    } else if (userScrolling.current && !paused) {
+      setPaused(true);
+    } else if (!paused) {
+      // Nicht vom Nutzer verursacht → wieder nach unten
+      stickToBottom();
+    }
   };
 
   const resume = () => {
+    userScrolling.current = false;
     setPaused(false);
     setHoverPaused(false);
     const el = listRef.current;
@@ -217,10 +260,20 @@ export function ChatPanel({ channels, active, onActive, loggedIn, userId, onLogi
         ref={listRef}
         className={`chat-list ${settings.chatAltRows ? "alt-rows" : ""}`}
         onScroll={onScroll}
+        onWheel={onWheel}
+        onMouseDown={(e) => {
+          // Klick auf die Scrollleiste (Ziel ist die Liste selbst, nicht eine Nachricht)
+          if (e.target === e.currentTarget) userScrolling.current = true;
+        }}
+        onMouseUp={() => {
+          const el = listRef.current;
+          if (el && el.scrollHeight - el.scrollTop - el.clientHeight < 40) userScrolling.current = false;
+        }}
         onMouseEnter={() => settings.pauseOnHover && setHoverPaused(true)}
         onMouseLeave={() => hoverPaused && resume()}
         style={listStyle}
       >
+        <div ref={contentRef}>
         {channels.length === 0 && <div className="chat-empty">Öffne einen Kanal, um den Chat zu sehen.</div>}
         {messages.map((m) => (
           <ChatLine
@@ -236,6 +289,7 @@ export function ChatPanel({ channels, active, onActive, loggedIn, userId, onLogi
             onName={openCard}
           />
         ))}
+        </div>
       </div>
       {frozen && (
         <button className="resume" onClick={resume}>

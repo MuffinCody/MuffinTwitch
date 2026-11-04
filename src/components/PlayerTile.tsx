@@ -330,6 +330,11 @@ export function PlayerTile(p: Props) {
             </div>
           )}
         </div>
+        {p.fullscreen && (
+          <button className="pbtn" onClick={p.onChat} title="Chat ein-/ausblenden">
+            <Icon name="chat" size={20} />
+          </button>
+        )}
         <button className="pbtn" onClick={fullscreen} title={p.fullscreen ? "Vollbild beenden (Esc)" : "Vollbild (Doppelklick)"}>
           <Icon name={p.fullscreen ? "fullscreen-exit" : "fullscreen"} size={24} />
         </button>

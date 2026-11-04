@@ -387,3 +387,19 @@ button.brand:hover { background: var(--bg-4) !important; }
 .unmute-hint { position: absolute; left: 12px; bottom: 56px; z-index: 2; display: flex; align-items: center; gap: 6px; background: rgba(0,0,0,0.75) !important; color: #fff; border-radius: 18px; padding: 6px 12px; font-size: 13px; font-weight: 600; }
 .unmute-hint:hover { background: var(--accent) !important; }
 
+
+/* ---------- Chat im Vollbild ---------- */
+.main { position: relative; }
+.fs-chat {
+  position: absolute; top: 0; right: 0; bottom: 0; z-index: 6; display: flex;
+  box-shadow: -8px 0 24px rgba(0,0,0,0.35);
+}
+.fs-chat .chat-panel { background: rgba(14, 14, 16, 0.78); backdrop-filter: blur(6px); }
+.fs-chat .chat-tabs, .fs-chat .chat-input, .fs-chat .chat-foot, .fs-chat .chat-info, .fs-chat .shared-info { background: transparent; }
+.fs-chat .chat-list { text-shadow: 0 1px 2px rgba(0,0,0,0.8); }
+
+.refresh-btn { background: transparent; color: var(--muted); padding: 2px 4px; margin-left: 4px; display: grid; place-items: center; }
+.refresh-btn:hover:not(:disabled) { color: var(--text); background: var(--bg-4) !important; }
+.refresh-btn.spinning .ico { animation: spin 0.8s linear infinite; }
+.panel-head .spacer { flex: 1; }
+

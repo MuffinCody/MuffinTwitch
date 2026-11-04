@@ -5,6 +5,9 @@ import { Icon } from "./Icon";
 
 interface Props {
   followed: HelixStream[];
+  followLoading: boolean;
+  followUpdated: number | null;
+  onRefreshFollowed(): void;
   favorites: string[];
   favInfo: Record<string, HelixStream | undefined>;
   avatars: Record<string, HelixUser | undefined>;
@@ -139,6 +142,17 @@ export function Sidebar(p: Props) {
 
       <div className="panel-head">
         <div className="section-title">Gefolgt · Live</div>
+        {p.loggedIn && (
+          <button
+            className={`refresh-btn ${p.followLoading ? "spinning" : ""}`}
+            title={`Jetzt aktualisieren${p.followUpdated ? ` (zuletzt ${new Date(p.followUpdated).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })})` : ""}`}
+            disabled={p.followLoading}
+            onClick={p.onRefreshFollowed}
+          >
+            <Icon name="refresh" size={14} />
+          </button>
+        )}
+        <div className="spacer" />
         {p.loggedIn && (
           <select
             className="mini-select"
