@@ -2,6 +2,7 @@ import type { MouseEvent } from "react";
 import { boxArt, type HelixGame, type HelixStream, type HelixUser } from "../lib/api";
 import { updateSettings, useSettings, type Settings } from "../lib/settings";
 import { Icon } from "./Icon";
+import { t, locale } from "../lib/i18n";
 
 interface Props {
   followed: HelixStream[];
@@ -37,17 +38,17 @@ function Entry({
     <div
       className={`entry ${stream ? "" : "offline"} ${isOpen ? "open" : ""}`}
       onClick={click}
-      title={stream ? `${stream.title}\n\nKlick: öffnen · Strg+Klick: zum Multiview hinzufügen` : "Klick: öffnen · Strg+Klick: hinzufügen"}
+      title={stream ? `${stream.title}\n\n${t("Klick: öffnen · Strg+Klick: zum Multiview hinzufügen")}` : t("Klick: öffnen · Strg+Klick: hinzufügen")}
     >
       {avatar ? <img className="avatar" src={avatar} alt="" /> : <div className="avatar ph">{name[0]?.toUpperCase()}</div>}
       <div className="entry-text">
         <div className="entry-name">{name}</div>
-        <div className="entry-game">{stream ? stream.game_name || "Live" : "Offline"}</div>
+        <div className="entry-game">{stream ? stream.game_name || t("Live") : t("Offline")}</div>
       </div>
       {stream && <div className="viewers">{formatViewers(stream.viewer_count)}</div>}
       <button
         className="add"
-        title="Zum Multiview hinzufügen"
+        title={t("Zum Multiview hinzufügen")}
         onClick={(e) => {
           e.stopPropagation();
           onOpen(login, true);
@@ -58,7 +59,7 @@ function Entry({
       {onRemove && (
         <button
           className="add"
-          title="Favorit entfernen"
+          title={t("Favorit entfernen")}
           onClick={(e) => {
             e.stopPropagation();
             onRemove();
@@ -78,7 +79,7 @@ function formatViewers(n: number) {
 const SORT_LABELS: Record<Settings["followSort"], string> = {
   viewers: "Zuschauer",
   recent: "Zuletzt gesehen",
-  recommended: "Empfohlen",
+  recommended: "Empfohlen", // Übersetzung beim Anzeigen
 };
 
 /**
@@ -121,12 +122,12 @@ export function Sidebar(p: Props) {
   return (
     <nav className="sidebar">
       <div className="panel-head">
-        <div className="section-title">Favoriten</div>
-        <button className="collapse pinned" title="Kanalliste ausblenden (Strg+B)" onClick={p.onHide}>
+        <div className="section-title">{t("Favoriten")}</div>
+        <button className="collapse pinned" title={t("Kanalliste ausblenden (Strg+B)")} onClick={p.onHide}>
           <Icon name="panel-left" />
         </button>
       </div>
-      {favSorted.length === 0 && <div className="hint">Mit ☆ im Player einen Kanal merken.</div>}
+      {favSorted.length === 0 && <div className="hint">{t("Mit ☆ im Player einen Kanal merken.")}</div>}
       {favSorted.map((l) => (
         <Entry
           key={l}
@@ -141,11 +142,11 @@ export function Sidebar(p: Props) {
       ))}
 
       <div className="panel-head">
-        <div className="section-title">Gefolgt · Live</div>
+        <div className="section-title">{t("Gefolgt · Live")}</div>
         {p.loggedIn && (
           <button
             className={`refresh-btn ${p.followLoading ? "spinning" : ""}`}
-            title={`Jetzt aktualisieren${p.followUpdated ? ` (zuletzt ${new Date(p.followUpdated).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })})` : ""}`}
+            title={`${t("Jetzt aktualisieren")}${p.followUpdated ? ` (${t("zuletzt {time}", { time: new Date(p.followUpdated).toLocaleTimeString(locale(), { hour: "2-digit", minute: "2-digit" }) })})` : ""}`}
             disabled={p.followLoading}
             onClick={p.onRefreshFollowed}
           >
@@ -157,19 +158,19 @@ export function Sidebar(p: Props) {
           <select
             className="mini-select"
             value={s.followSort}
-            title="Sortierung"
+            title={t("Sortierung")}
             onChange={(e) => updateSettings({ followSort: e.target.value as Settings["followSort"] })}
           >
             {Object.entries(SORT_LABELS).map(([k, v]) => (
               <option key={k} value={k}>
-                {v}
+                {t(v)}
               </option>
             ))}
           </select>
         )}
       </div>
-      {!p.loggedIn && <div className="hint">Anmelden, um gefolgte Kanäle zu sehen.</div>}
-      {p.loggedIn && followed.length === 0 && <div className="hint">Niemand live.</div>}
+      {!p.loggedIn && <div className="hint">{t("Anmelden, um gefolgte Kanäle zu sehen.")}</div>}
+      {p.loggedIn && followed.length === 0 && <div className="hint">{t("Niemand live.")}</div>}
       {followed.map((st) => (
         <Entry
           key={st.user_login}
@@ -185,28 +186,28 @@ export function Sidebar(p: Props) {
       {p.loggedIn && (
         <>
           <div className="panel-head">
-            <div className="section-title">Kategorien</div>
+            <div className="section-title">{t("Kategorien")}</div>
             <div className="chip-group">
               <button
                 className={!showFavGames ? "chip on" : "chip"}
                 onClick={() => updateSettings({ categoryFilter: "top" })}
               >
-                Top
+                {t("Top")}
               </button>
               <button
                 className={showFavGames ? "chip on" : "chip"}
                 onClick={() => updateSettings({ categoryFilter: "fav" })}
-                title="Lieblingskategorien"
+                title={t("Lieblingskategorien")}
               >
                 ★
               </button>
-              <button className="chip" onClick={p.onAllCategories} title="Alle Kategorien">
-                Alle
+              <button className="chip" onClick={p.onAllCategories} title={t("Alle Kategorien")}>
+                {t("Alle")}
               </button>
             </div>
           </div>
           {showFavGames && gameList.length === 0 && (
-            <div className="hint">Unter „Alle“ mit ☆ Lieblingskategorien markieren.</div>
+            <div className="hint">{t("Unter „Alle“ mit ☆ Lieblingskategorien markieren.")}</div>
           )}
           {gameList.map((g) => (
             <div key={g.id} className="entry game-entry" onClick={() => p.onGame(g)} title={g.name}>

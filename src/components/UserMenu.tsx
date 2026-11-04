@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { AuthInfo, HelixUser } from "../lib/api";
 import { Icon } from "./Icon";
+import { useT } from "../lib/i18n";
 
 interface Props {
   auth: AuthInfo | null;
@@ -12,6 +13,7 @@ interface Props {
 
 /** Oben rechts: Anmelden-Button bzw. Profilbild + Name mit Menü (wie bei Twitch). */
 export function UserMenu({ auth, me, onLogin, onLogout, onSettings }: Props) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -26,11 +28,11 @@ export function UserMenu({ auth, me, onLogin, onLogout, onSettings }: Props) {
   if (!auth?.logged_in) {
     return (
       <div className="user-area">
-        <button className="icon-btn" title="Einstellungen" onClick={onSettings}>
+        <button className="icon-btn" title={t("Einstellungen")} onClick={onSettings}>
           <Icon name="settings" />
         </button>
         <button className="login-btn" onClick={onLogin}>
-          <Icon name="user" /> Anmelden
+          <Icon name="user" /> {t("Anmelden")}
         </button>
       </div>
     );
@@ -54,7 +56,7 @@ export function UserMenu({ auth, me, onLogin, onLogout, onSettings }: Props) {
             {me?.profile_image_url && <img src={me.profile_image_url} alt="" />}
             <div>
               <b>{name}</b>
-              <div className="muted small">{auth.web ? "Turbo/Abo-Vorteile aktiv" : "Angemeldet"}</div>
+              <div className="muted small">{auth.web ? t("Turbo/Abo-Vorteile aktiv") : t("Angemeldet")}</div>
             </div>
           </div>
           <button
@@ -63,7 +65,7 @@ export function UserMenu({ auth, me, onLogin, onLogout, onSettings }: Props) {
               onSettings();
             }}
           >
-            <Icon name="settings" /> Einstellungen
+            <Icon name="settings" /> {t("Einstellungen")}
           </button>
           <button
             onClick={() => {
@@ -71,7 +73,7 @@ export function UserMenu({ auth, me, onLogin, onLogout, onSettings }: Props) {
               onLogout();
             }}
           >
-            <Icon name="logout" /> Abmelden
+            <Icon name="logout" /> {t("Abmelden")}
           </button>
         </div>
       )}

@@ -8,6 +8,7 @@ import { setSelfUser } from "./lib/seventv";
 import { points } from "./lib/points";
 import { getSettings, recordWatch, updateSettings, useSettings } from "./lib/settings";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { useT } from "./lib/i18n";
 import { MultiView, type Layout } from "./components/MultiView";
 import { PlayerTile } from "./components/PlayerTile";
 import { ChatPanel } from "./components/ChatPanel";
@@ -46,6 +47,7 @@ function TwitchGlitch() {
 
 export default function App() {
   const settings = useSettings();
+  const t = useT();
   const [auth, setAuth] = useState<AuthInfo | null>(null);
   const [me, setMe] = useState<HelixUser | null>(null);
   const [channels, setChannels] = useState<string[]>(() => getSettings().lastChannels.slice(0, MAX_STREAMS));
@@ -396,7 +398,7 @@ export default function App() {
       {!fullscreen && <header className="topbar">
         <button
           className="brand"
-          title={`Kanalliste ${settings.sidebarOpen ? "ausblenden" : "einblenden"} (Strg+B)`}
+          title={settings.sidebarOpen ? t("Kanalliste ausblenden (Strg+B)") : t("Kanalliste einblenden (Strg+B)")}
           onClick={toggleSidebar}
         >
           <TwitchGlitch />
@@ -413,8 +415,8 @@ export default function App() {
           className={`multi-btn ${multiMode ? "on" : ""}`}
           title={
             multiMode
-              ? "Multiview-Modus an: Kanäle werden hinzugefügt statt ersetzt (klicken zum Ausschalten)"
-              : "Multiview-Modus: Kanäle hinzufügen statt ersetzen"
+              ? t("Multiview-Modus an: Kanäle werden hinzugefügt statt ersetzt (klicken zum Ausschalten)")
+              : t("Multiview-Modus: Kanäle hinzufügen statt ersetzen")
           }
           onClick={() => setMultiMode((m) => !m)}
         >
@@ -425,7 +427,7 @@ export default function App() {
         <div className="spacer" />
         {multi && (
           <div className="seg">
-            <button className={layout === "grid" ? "on" : ""} onClick={() => setLayout("grid")} title="Raster">
+            <button className={layout === "grid" ? "on" : ""} onClick={() => setLayout("grid")} title={t("Raster")}>
               <Icon name="grid" size={14} />
             </button>
             <button
@@ -434,7 +436,7 @@ export default function App() {
                 setLayout("focus");
                 if (!focused) setFocused(audio ?? channels[0]);
               }}
-              title="Fokus (ein großer Stream)"
+              title={t("Fokus (ein großer Stream)")}
             >
               <Icon name="focus" size={14} />
             </button>
@@ -476,21 +478,21 @@ export default function App() {
             renderTile={renderTile}
             empty={
               <div className="empty">
-                <h1>Willkommen bei MuffinTwitch</h1>
-                <p>Suche oben nach einem Kanal oder wähle links einen Favoriten bzw. eine Kategorie.</p>
+                <h1>{t("Willkommen bei MuffinTwitch")}</h1>
+                <p>{t("Suche oben nach einem Kanal oder wähle links einen Favoriten bzw. eine Kategorie.")}</p>
                 <p className="muted">
-                  Mit <b>＋</b> oder <kbd>Strg</kbd>+Klick schaust du bis zu {MAX_STREAMS} Streams gleichzeitig.
+                  {t("Mit")} <b>＋</b> {t("oder")} <kbd>{t("Strg")}</kbd>{t("+Klick schaust du bis zu {n} Streams gleichzeitig.", { n: MAX_STREAMS })}
                 </p>
               </div>
             }
           />
           {!fullscreen && !settings.sidebarOpen && (
-            <button className="edge-handle left" title="Kanalliste einblenden (Strg+B)" onClick={toggleSidebar}>
+            <button className="edge-handle left" title={t("Kanalliste einblenden (Strg+B)")} onClick={toggleSidebar}>
               <Icon name="panel-left" />
             </button>
           )}
           {!fullscreen && !settings.chatOpen && (
-            <button className="edge-handle right" title="Chat einblenden (Strg+J)" onClick={toggleChat}>
+            <button className="edge-handle right" title={t("Chat einblenden (Strg+J)")} onClick={toggleChat}>
               <Icon name="panel-right" />
             </button>
           )}

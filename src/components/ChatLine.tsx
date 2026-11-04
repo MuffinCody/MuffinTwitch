@@ -18,6 +18,7 @@ function cachedTokens(msg: ChatMsg): Token[] {
   return tokens;
 }
 import { paintFor, stvBadgeFor } from "../lib/seventv";
+import { t, locale } from "../lib/i18n";
 
 function EmoteImg({ e, overlays }: { e: Emote; overlays: Emote[] }) {
   const img = (x: Emote, cls: string) => (
@@ -54,6 +55,8 @@ interface Props {
   /** Geteilter Chat: Kanal, aus dem die Nachricht stammt */
   sourceUser?: { display_name: string; profile_image_url: string };
   onName?: (msg: ChatMsg, x: number, y: number) => void;
+  /** Sprache – nur damit die Zeile bei einem Sprachwechsel neu gezeichnet wird */
+  lang: string;
 }
 
 function ChannelTag({ channel, avatar }: { channel: string; avatar?: string }) {
@@ -69,7 +72,7 @@ function ChatLineInner({ msg, showChannel, showTimestamp, showBadges, showPaints
     return (
       <div className="line system">
         {showChannel && <ChannelTag channel={msg.channel} avatar={chanAvatar} />}
-        {msg.text}
+        {t(msg.text, msg.sysVars)}
       </div>
     );
   }
@@ -78,7 +81,7 @@ function ChatLineInner({ msg, showChannel, showTimestamp, showBadges, showPaints
   const color = msg.login ? nameColor(msg.login, msg.color) : undefined;
   const paint = showPaints ? paintFor(msg.userId) : undefined;
   const stvBadge = stvBadgeFor(msg.userId);
-  const time = new Date(msg.time).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+  const time = new Date(msg.time).toLocaleTimeString(locale(), { hour: "2-digit", minute: "2-digit" });
 
   const cls = ["line", msg.kind, msg.mention && "mention", msg.deleted && "deleted", msg.first && "first"]
     .filter(Boolean)
@@ -89,7 +92,7 @@ function ChatLineInner({ msg, showChannel, showTimestamp, showBadges, showPaints
       {msg.kind === "usernotice" && msg.systemText && <div className="sys-text">{msg.systemText}</div>}
       {msg.reply && (
         <div className="reply">
-          ↳ Antwort an <b>@{msg.reply.name}</b>: {msg.reply.text}
+          ↳ {t("Antwort an")} <b>@{msg.reply.name}</b>: {msg.reply.text}
         </div>
       )}
       {(msg.kind !== "usernotice" || msg.text) && (
@@ -101,10 +104,10 @@ function ChatLineInner({ msg, showChannel, showTimestamp, showBadges, showPaints
               className="source-avatar"
               src={sourceUser.profile_image_url}
               alt=""
-              title={`Aus dem Chat von ${sourceUser.display_name}`}
+              title={t("Aus dem Chat von {name}", { name: sourceUser.display_name })}
             />
           )}
-          {msg.sourceRoomId && !sourceUser && <span className="source-dot" title="Aus einem Partnerkanal (geteilter Chat)" />}
+          {msg.sourceRoomId && !sourceUser && <span className="source-dot" title={t("Aus einem Partnerkanal (geteilter Chat)")} />}
           {showBadges &&
             msg.badges.map(([set, ver]) => {
               const b = findBadge(msg.sourceRoomId ?? msg.roomId, set, ver);

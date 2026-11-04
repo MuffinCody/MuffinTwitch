@@ -1,4 +1,5 @@
 import { stvEvents } from "./seventv";
+import { t } from "./i18n";
 /** Drittanbieter-Emotes: 7TV (inkl. Live-Updates), BTTV, FFZ. */
 
 export type Provider = "twitch" | "7tv" | "bttv" | "ffz";
@@ -215,7 +216,7 @@ stvEvents.onDispatch((type, body) => {
   const channel = setSubs.get(body?.id);
   if (!channel) return;
   const map = channelEmotes.get(channel) ?? new Map();
-  const actor = body.actor?.display_name ?? "Jemand";
+  const actor = body.actor?.display_name ?? t("Jemand");
   const emit = (u: Omit<EmoteUpdate, "channel" | "actor">) =>
     updateListeners.forEach((l) => l({ channel, actor, ...u }));
   for (const p of body.pushed ?? []) {

@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { points, usePoints, formatPoints, isIntegrityError } from "../lib/points";
 import { updateSettings, useSettings } from "../lib/settings";
 import { Icon } from "./Icon";
+import { useT, locale } from "../lib/i18n";
 
 interface Reward {
   id: string;
@@ -46,6 +47,7 @@ interface Props {
 export function PointsMenu({ channel, onClose }: Props) {
   const st = usePoints(channel);
   const settings = useSettings();
+  const t = useT();
   const ref = useRef<HTMLDivElement>(null);
   const [data, setData] = useState<MenuData | null>(cache.get(channel) ?? null);
   const [error, setError] = useState<string | null>(null);
@@ -83,16 +85,16 @@ export function PointsMenu({ channel, onClose }: Props) {
   }, [onClose]);
 
   const cps = data?.channel?.communityPointsSettings;
-  const name = cps?.name || "Kanalpunkte";
+  const name = cps?.name || t("Kanalpunkte");
   const balance = st?.balance ?? 0;
   const rewards = (cps?.customRewards ?? [])
     .filter((r) => r.isEnabled)
     .sort((a, b) => a.cost - b.cost);
 
   const unavailable = (r: Reward): string | null => {
-    if (r.isPaused) return "Pausiert";
-    if (!r.isInStock) return "Ausverkauft";
-    if (r.cooldownExpiresAt && new Date(r.cooldownExpiresAt).getTime() > Date.now()) return "Cooldown";
+    if (r.isPaused) return t("Pausiert");
+    if (!r.isInStock) return t("Ausverkauft");
+    if (r.cooldownExpiresAt && new Date(r.cooldownExpiresAt).getTime() > Date.now()) return t("Cooldown");
     if (balance < r.cost) return null; // wird separat angezeigt
     return null;
   };
@@ -110,7 +112,7 @@ export function PointsMenu({ channel, onClose }: Props) {
         prompt: selected.prompt,
         textInput: selected.isUserInputRequired ? text : null,
       });
-      setDone(`„${selected.title}“ eingelöst!`);
+      setDone(t("„{title}“ eingelöst!", { title: selected.title }));
       setSelected(null);
       setText("");
       window.setTimeout(() => points.poll(channel), 800);
@@ -140,9 +142,9 @@ export function PointsMenu({ channel, onClose }: Props) {
         {cps?.image?.url ? <img src={cps.image.url} srcSet={`${cps.image.url} 1x, ${cps.image.url2x} 2x`} alt="" /> : <Icon name="points" size={22} />}
         <div className="pm-title">
           <div className="muted small">{name}</div>
-          <div className="pm-balance">{balance.toLocaleString("de-DE")}</div>
+          <div className="pm-balance">{balance.toLocaleString(locale())}</div>
         </div>
-        <button className="icon-btn" onClick={onClose} title="Schließen">
+        <button className="icon-btn" onClick={onClose} title={t("Schließen")}>
           <Icon name="close" />
         </button>
       </div>
@@ -151,23 +153,23 @@ export function PointsMenu({ channel, onClose }: Props) {
         <Icon name="gift" size={16} />
         <div className="pm-bonus-text">
           {st?.claimId ? (
-            <>Bonus verfügbar!</>
+            <>{t("Bonus verfügbar!")}</>
           ) : blocked ? (
-            <>Bonus-Truhe im Twitch-Chat einsammeln</>
+            <>{t("Bonus-Truhe im Twitch-Chat einsammeln")}</>
           ) : (
             <>
-              Bonus-Truhe {settings.autoClaimPoints ? "wird automatisch eingesammelt" : "manuell einsammeln"}
-              {st?.claimedCount ? ` · ${st.claimedCount}× diese Sitzung` : ""}
+              {settings.autoClaimPoints ? t("Bonus-Truhe wird automatisch eingesammelt") : t("Bonus-Truhe manuell einsammeln")}
+              {st?.claimedCount ? ` · ${t("{n}× diese Sitzung", { n: st.claimedCount })}` : ""}
             </>
           )}
         </div>
         {st?.claimId ? (
           <button className="primary small-btn" onClick={() => (blocked ? openChat() : points.claim(channel))}>
-            Einsammeln
+            {t("Einsammeln")}
           </button>
         ) : (
           !blocked && (
-            <label className="switch" title="Automatisch einsammeln">
+            <label className="switch" title={t("Automatisch einsammeln")}>
               <input
                 type="checkbox"
                 checked={settings.autoClaimPoints}
@@ -181,10 +183,9 @@ export function PointsMenu({ channel, onClose }: Props) {
 
       {blocked ? (
         <div className="pm-info">
-          Twitch lässt Truhe und Belohnungen nur über die eigene Webseite zu („integrity check“). Im
-          Twitch-Chat in deinem Browser klickst du sie direkt an.
+          {t("Twitch lässt Truhe und Belohnungen nur über die eigene Webseite zu („integrity check“). Im Twitch-Chat in deinem Browser klickst du sie direkt an.")}
           <button className="small-btn" onClick={openChat}>
-            Twitch-Chat im Browser öffnen ↗
+            {t("Twitch-Chat im Browser öffnen ↗")}
           </button>
         </div>
       ) : (
@@ -203,26 +204,26 @@ export function PointsMenu({ channel, onClose }: Props) {
               autoFocus
               value={text}
               maxLength={200}
-              placeholder="Deine Nachricht…"
+              placeholder={t("Deine Nachricht…")}
               onChange={(e) => setText(e.target.value)}
             />
           )}
           <div className="row">
-            <button onClick={() => setSelected(null)}>Zurück</button>
+            <button onClick={() => setSelected(null)}>{t("Zurück")}</button>
             <div className="spacer" />
             <button
               className="primary"
               disabled={busy || balance < selected.cost || (selected.isUserInputRequired && !text.trim())}
               onClick={redeem}
             >
-              Einlösen für {formatPoints(selected.cost)}
+              {t("Einlösen für {cost}", { cost: formatPoints(selected.cost) })}
             </button>
           </div>
         </div>
       ) : (
         <div className="pm-rewards">
           {!data && !error && <div className="spinner center" />}
-          {data && rewards.length === 0 && <div className="hint">Dieser Kanal hat keine eigenen Belohnungen.</div>}
+          {data && rewards.length === 0 && <div className="hint">{t("Dieser Kanal hat keine eigenen Belohnungen.")}</div>}
           {rewards.map((r) => {
             const why = unavailable(r);
             const tooExpensive = balance < r.cost;

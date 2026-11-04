@@ -32,6 +32,8 @@ export interface ChatMsg {
   historical?: boolean;
   /** Geteilter Chat: Raum-ID des Kanals, in dem die Nachricht ursprünglich geschrieben wurde */
   sourceRoomId?: string;
+  /** Systemmeldung: `text` ist eine Übersetzungs-Vorlage, das hier die Platzhalter */
+  sysVars?: Record<string, string | number>;
 }
 
 const MAX_PER_CHANNEL = 300;
@@ -177,8 +179,9 @@ class ChatStore {
     this.changed();
   }
 
-  system(channel: string, text: string) {
-    this.push({ id: `sys-${this.seq++}`, channel, kind: "system", time: Date.now(), badges: [], text });
+  /** Systemmeldung; `text` ist eine Übersetzungs-Vorlage (deutsch) mit {Platzhaltern} */
+  system(channel: string, text: string, sysVars?: Record<string, string | number>) {
+    this.push({ id: `sys-${this.seq++}`, channel, kind: "system", time: Date.now(), badges: [], text, sysVars });
   }
 
   markDeleted(channel: string, pred: (m: ChatMsg) => boolean) {
@@ -350,7 +353,7 @@ function handle(m: IrcMessage) {
       if (target) {
         chat.markDeleted(channel, (x) => x.login === target);
         const dur = m.tags["ban-duration"];
-        chat.system(channel, dur ? `${target} wurde für ${dur}s getimeoutet.` : `${target} wurde gebannt.`);
+        chat.system(channel, dur ? "{user} wurde für {s}s getimeoutet." : "{user} wurde gebannt.", { user: target, s: dur ?? "" });
       } else {
         chat.markDeleted(channel, () => true);
         chat.system(channel, "Der Chat wurde von einem Moderator geleert.");
@@ -403,9 +406,9 @@ export function startChat() {
   irc.onMessage(handle);
   irc.onState((c) => chat.setConnected(c));
   onSevenTvUpdate((u) => {
-    if (u.added) chat.system(u.channel, `7TV: ${u.actor} hat das Emote ${u.added} hinzugefügt.`);
-    if (u.removed) chat.system(u.channel, `7TV: ${u.actor} hat das Emote ${u.removed} entfernt.`);
-    if (u.renamed) chat.system(u.channel, `7TV: ${u.actor} hat ${u.renamed[0]} in ${u.renamed[1]} umbenannt.`);
+    if (u.added) chat.system(u.channel, "7TV: {actor} hat das Emote {emote} hinzugefügt.", { actor: u.actor, emote: u.added });
+    if (u.removed) chat.system(u.channel, "7TV: {actor} hat das Emote {emote} entfernt.", { actor: u.actor, emote: u.removed });
+    if (u.renamed) chat.system(u.channel, "7TV: {actor} hat {from} in {to} umbenannt.", { actor: u.actor, from: u.renamed[0], to: u.renamed[1] });
   });
   irc.connect();
   // 7TV-Präsenz regelmäßig erneuern, damit dein Paint sichtbar bleibt

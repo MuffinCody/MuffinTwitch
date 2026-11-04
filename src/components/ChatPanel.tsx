@@ -10,6 +10,7 @@ import { PointsMenu, pointsIcon } from "./PointsMenu";
 import { ChatLine } from "./ChatLine";
 import { EmotePicker, rememberEmote } from "./EmotePicker";
 import { Icon } from "./Icon";
+import { t } from "../lib/i18n";
 import type { HelixUser } from "../lib/api";
 
 interface Props {
@@ -40,7 +41,7 @@ function PointsBadge({ channel }: { channel: string }) {
     <>
       <button
         className={`points ${st.claimId ? "claimable" : ""} ${open ? "open" : ""}`}
-        title={st.claimId ? "Bonus verfügbar – Kanalpunkte öffnen" : "Kanalpunkte"}
+        title={st.claimId ? t("Bonus verfügbar – Kanalpunkte öffnen") : t("Kanalpunkte")}
         onClick={() => setOpen((o) => !o)}
       >
         {icon ? <img className="points-ico" src={icon} alt="" /> : <Icon name="points" />}
@@ -200,12 +201,12 @@ export function ChatPanel({ channels, active, onActive, loggedIn, userId, onLogi
   };
 
   const modes: string[] = [];
-  if (room?.emoteOnly) modes.push("Nur Emotes");
-  if (room?.subsOnly) modes.push("Nur Subs");
+  if (room?.emoteOnly) modes.push(t("Nur Emotes"));
+  if (room?.subsOnly) modes.push(t("Nur Subs"));
   if (room?.followersOnly !== undefined && room.followersOnly >= 0)
     modes.push(`Follower ${room.followersOnly ? `${room.followersOnly} min` : ""}`.trim());
   if (room?.slow) modes.push(`Slow ${room.slow}s`);
-  if (settings.chatDelay > 0) modes.push(`Verzögert ${settings.chatDelay}s`);
+  if (settings.chatDelay > 0) modes.push(t("Verzögert {s}s", { s: settings.chatDelay }));
   if (settings.chatMaxRate > 0) modes.push(`max. ${settings.chatMaxRate}/s`);
 
   const listStyle = {
@@ -219,8 +220,8 @@ export function ChatPanel({ channels, active, onActive, loggedIn, userId, onLogi
     <aside className="chat-panel" style={{ width: settings.chatWidth }}>
       <div className="chat-tabs">
         {channels.length > 1 && (
-          <button className={mixed ? "tab active" : "tab"} onClick={() => onActive("*")} title="Alle Chats gemischt">
-            Alle
+          <button className={mixed ? "tab active" : "tab"} onClick={() => onActive("*")} title={t("Alle Chats gemischt")}>
+            {t("Alle")}
           </button>
         )}
         {channels.map((c) => (
@@ -228,15 +229,15 @@ export function ChatPanel({ channels, active, onActive, loggedIn, userId, onLogi
             {c}
           </button>
         ))}
-        <span className={chat.connected ? "conn ok" : "conn"} title={chat.connected ? "Chat verbunden" : "Verbinde…"} />
-        <button className="collapse pinned" title="Chat ausblenden (Strg+J)" onClick={onHide}>
+        <span className={chat.connected ? "conn ok" : "conn"} title={chat.connected ? t("Chat verbunden") : t("Verbinde…")} />
+        <button className="collapse pinned" title={t("Chat ausblenden (Strg+J)")} onClick={onHide}>
           <Icon name="panel-right" />
         </button>
       </div>
 
       {!mixed && target && together[target]?.length > 0 && (
-        <div className="shared-info" title="Nachrichten aus den Partnerkanälen erscheinen hier mit deren Profilbild">
-          <span>Geteilter Chat mit</span>
+        <div className="shared-info" title={t("Nachrichten aus den Partnerkanälen erscheinen hier mit deren Profilbild")}>
+          <span>{t("Geteilter Chat mit")}</span>
           {together[target].map((u) => (
             <button key={u.id} className="together-chip small" onClick={() => onOpenChannel(u.login)}>
               <img src={u.profile_image_url} alt="" />
@@ -250,7 +251,7 @@ export function ChatPanel({ channels, active, onActive, loggedIn, userId, onLogi
         <div className="chat-info">
           {modes.join(" · ")}
           {target && channelEmoteCount(target) > 0 && (
-            <span className="emote-count">{channelEmoteCount(target)} Kanal-Emotes</span>
+            <span className="emote-count">{t("{n} Kanal-Emotes", { n: channelEmoteCount(target) })}</span>
           )}
         </div>
       )}
@@ -274,7 +275,7 @@ export function ChatPanel({ channels, active, onActive, loggedIn, userId, onLogi
         style={listStyle}
       >
         <div ref={contentRef}>
-        {channels.length === 0 && <div className="chat-empty">Öffne einen Kanal, um den Chat zu sehen.</div>}
+        {channels.length === 0 && <div className="chat-empty">{t("Öffne einen Kanal, um den Chat zu sehen.")}</div>}
         {messages.map((m) => (
           <ChatLine
             key={`${m.channel}-${m.id}`}
@@ -284,6 +285,7 @@ export function ChatPanel({ channels, active, onActive, loggedIn, userId, onLogi
             showBadges={settings.showBadges}
             showPaints={settings.show7tvPaints}
             renderVersion={renderVersion}
+            lang={settings.language}
             chanAvatar={channelAvatars[m.channel]}
             sourceUser={m.sourceRoomId && m.sourceRoomId !== m.roomId ? roomUsers[m.sourceRoomId] : undefined}
             onName={openCard}
@@ -293,7 +295,7 @@ export function ChatPanel({ channels, active, onActive, loggedIn, userId, onLogi
       </div>
       {frozen && (
         <button className="resume" onClick={resume}>
-          {hoverPaused && !paused ? "Chat pausiert (Maus über Chat)" : "↓ Chat pausiert – nach unten springen"}
+          {hoverPaused && !paused ? t("Chat pausiert (Maus über Chat)") : t("↓ Chat pausiert – nach unten springen")}
         </button>
       )}
       </div>
@@ -306,7 +308,7 @@ export function ChatPanel({ channels, active, onActive, loggedIn, userId, onLogi
         {loggedIn ? (
           <>
             {mixed && channels.length > 1 && (
-              <select value={target} onChange={(e) => setSendTarget(e.target.value)} title="Senden an">
+              <select value={target} onChange={(e) => setSendTarget(e.target.value)} title={t("Senden an")}>
                 {channels.map((c) => (
                   <option key={c}>{c}</option>
                 ))}
@@ -322,7 +324,7 @@ export function ChatPanel({ channels, active, onActive, loggedIn, userId, onLogi
                   setInput(e.target.value);
                 }}
                 onKeyDown={onKey}
-                placeholder={target ? `Nachricht an #${target}` : "Kein Kanal"}
+                placeholder={target ? t("Nachricht an #{ch}", { ch: target }) : t("Kein Kanal")}
                 maxLength={500}
               />
               <button
@@ -337,7 +339,7 @@ export function ChatPanel({ channels, active, onActive, loggedIn, userId, onLogi
           </>
         ) : (
           <button className="login-hint" onClick={onLogin}>
-            Anmelden, um zu chatten
+            {t("Anmelden, um zu chatten")}
           </button>
         )}
       </div>
@@ -359,7 +361,7 @@ export function ChatPanel({ channels, active, onActive, loggedIn, userId, onLogi
         <div className="chat-foot">
           {loggedIn && target && <PointsBadge channel={target} />}
           <span className="spacer" />
-          <button className="icon-btn small" title="Chat-Einstellungen" onClick={onOpenSettings}>
+          <button className="icon-btn small" title={t("Chat-Einstellungen")} onClick={onOpenSettings}>
             <Icon name="settings" size={18} />
           </button>
         </div>

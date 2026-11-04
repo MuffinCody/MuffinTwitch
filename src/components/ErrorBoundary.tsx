@@ -1,5 +1,6 @@
 import { Component, type ReactNode } from "react";
 import { api } from "../lib/api";
+import { t } from "../lib/i18n";
 
 interface Props {
   name: string;
@@ -28,9 +29,9 @@ export class ErrorBoundary extends Component<Props, { error: Error | null }> {
     if (!this.state.error) return this.props.children;
     return (
       <div className={this.props.compact ? "boundary compact" : "boundary"} style={this.props.style}>
-        <b>Hier ist etwas schiefgelaufen.</b>
+        <b>{t("Hier ist etwas schiefgelaufen.")}</b>
         <small>{this.state.error.message}</small>
-        <button onClick={() => this.setState({ error: null })}>Erneut versuchen</button>
+        <button onClick={() => this.setState({ error: null })}>{t("Erneut versuchen")}</button>
       </div>
     );
   }

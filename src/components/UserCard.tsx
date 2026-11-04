@@ -5,6 +5,7 @@ import { chat, type ChatMsg } from "../lib/chat";
 import { nameColor } from "../lib/tokenize";
 import { paintFor } from "../lib/seventv";
 import { getSettings } from "../lib/settings";
+import { useT, locale } from "../lib/i18n";
 import { Icon } from "./Icon";
 
 export interface UserCardTarget {
@@ -38,6 +39,7 @@ interface LogMsg {
 
 /** Popup beim Klick auf einen Namen im Chat. */
 export function UserCard({ target, myUserId, canChat, onMention, onOpenChannel, onClose }: Props) {
+  const tr = useT();
   const ref = useRef<HTMLDivElement>(null);
   const [user, setUser] = useState<HelixUser & { created_at?: string } | null>(null);
   const [tab, setTab] = useState<Tab>("messages");
@@ -114,8 +116,8 @@ export function UserCard({ target, myUserId, canChat, onMention, onOpenChannel, 
   const today = new Date().toDateString();
   const fmt = (t: number) => {
     const d = new Date(t);
-    const time = d.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
-    return d.toDateString() === today ? time : `${d.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" })} ${time}`;
+    const time = d.toLocaleTimeString(locale(), { hour: "2-digit", minute: "2-digit" });
+    return d.toDateString() === today ? time : `${d.toLocaleDateString(locale(), { day: "2-digit", month: "2-digit" })} ${time}`;
   };
 
   const sendWhisper = async () => {
@@ -126,12 +128,12 @@ export function UserCard({ target, myUserId, canChat, onMention, onOpenChannel, 
     try {
       await api.helixPost("whispers", [["from_user_id", myUserId], ["to_user_id", toId]], { message: text });
       setWhisper("");
-      setWhisperState({ ok: "Gesendet." });
+      setWhisperState({ ok: tr("Gesendet.") });
     } catch (e) {
       const msg = String(e);
       setWhisperState({
         error: /401|403|scope/i.test(msg)
-          ? `${msg} – Twitch erlaubt Flüstern nur mit verifizierter Telefonnummer und passender Berechtigung (ggf. unter Einstellungen → Erweitert die eigene App neu verbinden).`
+          ? `${msg} – ${tr("Twitch erlaubt Flüstern nur mit verifizierter Telefonnummer und passender Berechtigung (ggf. unter Einstellungen → Erweitert die eigene App neu verbinden).")}`
           : msg,
       });
     }
@@ -139,7 +141,7 @@ export function UserCard({ target, myUserId, canChat, onMention, onOpenChannel, 
 
   const paint = paintFor(target.userId);
   const color = nameColor(target.login, target.color);
-  const created = user?.created_at ? new Date(user.created_at).toLocaleDateString("de-DE") : null;
+  const created = user?.created_at ? new Date(user.created_at).toLocaleDateString(locale()) : null;
 
   return (
     <div className="user-card" ref={ref} style={pos}>
@@ -153,9 +155,9 @@ export function UserCard({ target, myUserId, canChat, onMention, onOpenChannel, 
           <div className="user-card-name" style={paint ? paint : { color }}>
             {target.displayName}
           </div>
-          {created && <div className="muted small">Konto seit {created}</div>}
+          {created && <div className="muted small">{tr("Konto seit {date}", { date: created })}</div>}
         </div>
-        <button className="icon-btn" onClick={onClose} title="Schließen">
+        <button className="icon-btn" onClick={onClose} title={tr("Schließen")}>
           <Icon name="close" />
         </button>
       </div>
@@ -167,15 +169,15 @@ export function UserCard({ target, myUserId, canChat, onMention, onOpenChannel, 
             onClose();
           }}
         >
-          @ Erwähnen
+          @ {tr("Erwähnen")}
         </button>
         <button className={tab === "whisper" ? "on" : ""} onClick={() => setTab(tab === "whisper" ? "messages" : "whisper")}>
-          ✉ Flüstern
+          ✉ {tr("Flüstern")}
         </button>
-        <button onClick={() => onOpenChannel(target.login)} title="Kanal öffnen">
-          ▶ Kanal
+        <button onClick={() => onOpenChannel(target.login)} title={tr("Kanal öffnen")}>
+          ▶ {tr("Kanal")}
         </button>
-        <button onClick={() => openUrl(`https://www.twitch.tv/${target.login}`)} title="Profil auf twitch.tv öffnen">
+        <button onClick={() => openUrl(`https://www.twitch.tv/${target.login}`)} title={tr("Profil auf twitch.tv öffnen")}>
           ↗
         </button>
       </div>
@@ -186,7 +188,7 @@ export function UserCard({ target, myUserId, canChat, onMention, onOpenChannel, 
             autoFocus
             value={whisper}
             maxLength={500}
-            placeholder={`Flüsternachricht an ${target.displayName}…`}
+            placeholder={tr("Flüsternachricht an {name}…", { name: target.displayName })}
             disabled={!canChat || whisperState.sending}
             onChange={(e) => setWhisper(e.target.value)}
             onKeyDown={(e) => {
@@ -200,7 +202,7 @@ export function UserCard({ target, myUserId, canChat, onMention, onOpenChannel, 
             {whisperState.ok && <span className="ok small">{whisperState.ok}</span>}
             <div className="spacer" />
             <button className="primary" disabled={!canChat || !whisper.trim() || whisperState.sending} onClick={sendWhisper}>
-              Senden
+              {tr("Senden")}
             </button>
           </div>
           {whisperState.error && <div className="error small">{whisperState.error}</div>}
@@ -208,9 +210,9 @@ export function UserCard({ target, myUserId, canChat, onMention, onOpenChannel, 
       ) : (
         <div className="user-card-messages">
           <div className="section-title">
-            Nachrichten {recent.length > 0 && <span className="muted">({recent.length})</span>}
+            {tr("Nachrichten")} {recent.length > 0 && <span className="muted">({recent.length})</span>}
           </div>
-          {recent.length === 0 && logs.state !== "loading" && <div className="hint">Keine Nachrichten gefunden.</div>}
+          {recent.length === 0 && logs.state !== "loading" && <div className="hint">{tr("Keine Nachrichten gefunden.")}</div>}
           {recent.map((m) => (
             <div key={`${m.channel}-${m.id}`} className={`uc-msg ${m.deleted ? "deleted" : ""}`}>
               <span className="ts">{fmt(m.time)}</span>
@@ -218,9 +220,9 @@ export function UserCard({ target, myUserId, canChat, onMention, onOpenChannel, 
               {m.text}
             </div>
           ))}
-          {logs.state === "loading" && <div className="hint">Lade ältere Nachrichten…</div>}
+          {logs.state === "loading" && <div className="hint">{tr("Lade ältere Nachrichten…")}</div>}
           {logs.state === "none" && getSettings().loadUserLogs && (
-            <div className="hint small">Für #{target.channel} gibt es keine öffentlichen Logs – nur Nachrichten seit dem Öffnen.</div>
+            <div className="hint small">{tr("Für #{ch} gibt es keine öffentlichen Logs – nur Nachrichten seit dem Öffnen.", { ch: target.channel })}</div>
           )}
         </div>
       )}

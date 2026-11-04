@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { boxArt, helixApi, type HelixChannelSearch, type HelixGame } from "../lib/api";
 import { Icon } from "./Icon";
+import { useT } from "../lib/i18n";
 
 interface Props {
   loggedIn: boolean;
@@ -16,6 +17,7 @@ type Item = { kind: "channel"; c: HelixChannelSearch } | { kind: "game"; g: Heli
 
 /** Suchfeld mit Live-Vorschlägen: Kanäle und Kategorien. */
 export function SearchBox({ loggedIn, canAdd, multiMode, onOpen, onGame, normalize }: Props) {
+  const t = useT();
   const [query, setQuery] = useState("");
   const [channels, setChannels] = useState<HelixChannelSearch[]>([]);
   const [games, setGames] = useState<HelixGame[]>([]);
@@ -113,14 +115,14 @@ export function SearchBox({ loggedIn, canAdd, multiMode, onOpen, onGame, normali
           }}
           onFocus={() => setOpen(true)}
           onKeyDown={onKey}
-          placeholder={loggedIn ? "Kanäle und Kategorien suchen…" : "Kanalname oder twitch.tv-Link…"}
+          placeholder={loggedIn ? t("Kanäle und Kategorien suchen…") : t("Kanalname oder twitch.tv-Link…")}
           spellCheck={false}
         />
         {valid && !multiMode && (
           <button
             className="search-add"
             disabled={!canAdd}
-            title="Zum Multiview hinzufügen (Strg+Enter)"
+            title={t("Zum Multiview hinzufügen (Strg+Enter)")}
             onClick={() => {
               const l = normalize(query);
               if (l) chooseChannel(l, true);
@@ -132,7 +134,7 @@ export function SearchBox({ loggedIn, canAdd, multiMode, onOpen, onGame, normali
       </div>
       {open && items.length > 0 && (
         <div className="search-results">
-          {channels.length > 0 && <div className="search-section">Kanäle</div>}
+          {channels.length > 0 && <div className="search-section">{t("Kanäle")}</div>}
           {channels.map((r, i) => (
             <div
               key={r.id}
@@ -146,12 +148,12 @@ export function SearchBox({ loggedIn, canAdd, multiMode, onOpen, onGame, normali
                   {r.display_name}
                   {r.is_live && <span className="live-pill">LIVE</span>}
                 </div>
-                <div className="entry-game">{r.is_live ? `${r.game_name} · ${r.title}` : r.game_name || "Offline"}</div>
+                <div className="entry-game">{r.is_live ? `${r.game_name} · ${r.title}` : r.game_name || t("Offline")}</div>
               </div>
               {!multiMode && (
                 <button
                   className="add"
-                  title="Zum Multiview hinzufügen"
+                  title={t("Zum Multiview hinzufügen")}
                   disabled={!canAdd}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -163,7 +165,7 @@ export function SearchBox({ loggedIn, canAdd, multiMode, onOpen, onGame, normali
               )}
             </div>
           ))}
-          {games.length > 0 && <div className="search-section">Kategorien</div>}
+          {games.length > 0 && <div className="search-section">{t("Kategorien")}</div>}
           {games.map((g, j) => {
             const i = channels.length + j;
             return (
@@ -176,13 +178,13 @@ export function SearchBox({ loggedIn, canAdd, multiMode, onOpen, onGame, normali
                 <img className="box-art search-art" src={boxArt(g.box_art_url, 30, 40)} alt="" />
                 <div className="entry-text">
                   <div className="entry-name">{g.name}</div>
-                  <div className="entry-game">Kategorie</div>
+                  <div className="entry-game">{t("Kategorie")}</div>
                 </div>
               </div>
             );
           })}
           <div className="search-hint">
-            {multiMode ? "Multiview-Modus: Kanäle werden hinzugefügt" : "Enter: öffnen · Strg+Enter / ＋: zum Multiview"}
+            {multiMode ? t("Multiview-Modus: Kanäle werden hinzugefügt") : t("Enter: öffnen · Strg+Enter / ＋: zum Multiview")}
           </div>
         </div>
       )}

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { channelEmoteList, globalEmoteList, onEmotesChanged, twitchEmote, type Emote, type Provider } from "../lib/emotes";
 import { api } from "../lib/api";
+import { useT } from "../lib/i18n";
 
 const RECENT_KEY = "nativ.recentEmotes";
 const PROVIDER_LABEL: Record<Provider, string> = { "7tv": "7TV", bttv: "BTTV", ffz: "FFZ", twitch: "Twitch" };
@@ -56,6 +57,7 @@ interface Props {
 }
 
 export function EmotePicker({ channel, userId, onPick, onClose }: Props) {
+  const t = useT();
   const [search, setSearch] = useState("");
   const [version, setVersion] = useState(0);
   const [twitch, setTwitch] = useState<Emote[]>([]);
@@ -93,32 +95,32 @@ export function EmotePicker({ channel, userId, onPick, onClose }: Props) {
       .filter((e): e is Emote => !!e && match(e));
 
     const out: { title: string; emotes: Emote[] }[] = [];
-    if (recent.length) out.push({ title: "Zuletzt benutzt", emotes: recent });
+    if (recent.length) out.push({ title: t("Zuletzt benutzt"), emotes: recent });
     for (const p of ["7tv", "bttv", "ffz"] as Provider[]) {
       const list = chan.filter((e) => e.provider === p);
-      if (list.length) out.push({ title: `Kanal · ${PROVIDER_LABEL[p]}`, emotes: list });
+      if (list.length) out.push({ title: `${t("Kanal")} · ${PROVIDER_LABEL[p]}`, emotes: list });
     }
     const tw = twitch.filter(match);
-    if (tw.length) out.push({ title: "Twitch (deine Emotes)", emotes: tw });
+    if (tw.length) out.push({ title: t("Twitch (deine Emotes)"), emotes: tw });
     for (const p of ["7tv", "bttv", "ffz"] as Provider[]) {
       const list = glob.filter((e) => e.provider === p);
       if (list.length) out.push({ title: `Global · ${PROVIDER_LABEL[p]}`, emotes: list });
     }
     return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [channel, search, version, twitch]);
+  }, [channel, search, version, twitch, t("Kanal")]);
 
   return (
     <div className="emote-picker" ref={ref}>
       <input
         autoFocus
         className="emote-search"
-        placeholder="Emotes suchen…"
+        placeholder={t("Emotes suchen…")}
         value={search}
         onChange={(e) => setSearch(e.target.value)}
       />
       <div className="emote-sections">
-        {sections.length === 0 && <div className="hint">Keine Emotes gefunden.</div>}
+        {sections.length === 0 && <div className="hint">{t("Keine Emotes gefunden.")}</div>}
         {sections.map((s) => (
           <div key={s.title}>
             <div className="emote-section-title">{s.title}</div>
@@ -140,7 +142,7 @@ export function EmotePicker({ channel, userId, onPick, onClose }: Props) {
           </div>
         ))}
       </div>
-      <div className="emote-foot">Shift+Klick: mehrere Emotes einfügen</div>
+      <div className="emote-foot">{t("Shift+Klick: mehrere Emotes einfügen")}</div>
     </div>
   );
 }

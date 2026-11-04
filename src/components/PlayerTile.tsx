@@ -3,6 +3,7 @@ import { createPlayer, type PlayerHandle, type PlayerStatus, type QualityOption 
 import type { HelixStream, HelixUser } from "../lib/api";
 import { useSettings, updateSettings } from "../lib/settings";
 import { Icon } from "./Icon";
+import { t, locale } from "../lib/i18n";
 
 interface Props {
   login: string;
@@ -193,7 +194,7 @@ export function PlayerTile(p: Props) {
           onDoubleClick={(e) => e.stopPropagation()}
           onClick={unlockAudio}
         >
-          <Icon name="volume-off" size={18} /> Klicken für Ton
+          <Icon name="volume-off" size={18} /> {t("Klicken für Ton")}
         </button>
       )}
 
@@ -202,26 +203,26 @@ export function PlayerTile(p: Props) {
           {status.kind === "loading" && <div className="spinner" />}
           {status.kind === "offline" && (
             <>
-              <b>{p.login}</b> ist offline
-              <small>Wird jede Minute erneut geprüft</small>
+              {t("{name} ist offline", { name: p.login })}
+              <small>{t("Wird jede Minute erneut geprüft")}</small>
             </>
           )}
           {status.kind === "error" && (
             <>
-              Fehler beim Laden
-              <small>{status.message}</small>
-              <button onClick={() => setReload((r) => r + 1)}>Erneut versuchen</button>
+              {t("Fehler beim Laden")}
+              <small>{t(status.message)}</small>
+              <button onClick={() => setReload((r) => r + 1)}>{t("Erneut versuchen")}</button>
             </>
           )}
         </div>
       )}
 
       {p.together && p.together.length > 0 && (
-        <div className="together-badge" title={`Streamt gemeinsam mit ${p.together.map((u) => u.display_name).join(", ")}`}>
+        <div className="together-badge" title={t("Streamt gemeinsam mit {names}", { names: p.together.map((u) => u.display_name).join(", ") })}>
           {p.together.slice(0, 4).map((u) => (
             <img key={u.id} src={u.profile_image_url} alt="" />
           ))}
-          <span>Gemeinsam</span>
+          <span>{t("Gemeinsam")}</span>
         </div>
       )}
 
@@ -230,18 +231,18 @@ export function PlayerTile(p: Props) {
           <b>{p.info?.user_name ?? p.login}</b>
           {p.info && (
             <span className="meta">
-              {p.info.game_name} · {p.info.viewer_count.toLocaleString("de-DE")} Zuschauer · {uptime(p.info.started_at)}
+              {p.info.game_name} · {t("{n} Zuschauer", { n: p.info.viewer_count.toLocaleString(locale()) })} · {uptime(p.info.started_at)}
             </span>
           )}
           {p.info?.title && <div className="stream-title">{p.info.title}</div>}
           {p.together && p.together.length > 0 && (
             <div className="together" onMouseDown={(e) => e.stopPropagation()} onDoubleClick={(e) => e.stopPropagation()}>
-              <span className="together-label">Gemeinsam mit</span>
+              <span className="together-label">{t("Gemeinsam mit")}</span>
               {p.together.map((u) => (
                 <button
                   key={u.id}
                   className="together-chip"
-                  title={`${u.display_name} zum Multiview hinzufügen`}
+                  title={t("{name} zum Multiview hinzufügen", { name: u.display_name })}
                   onClick={() => p.onOpenPartner(u.login)}
                 >
                   <img src={u.profile_image_url} alt="" />
@@ -252,29 +253,29 @@ export function PlayerTile(p: Props) {
           )}
         </div>
         <div className="tile-actions" onMouseDown={(e) => e.stopPropagation()} onDoubleClick={(e) => e.stopPropagation()}>
-          <button className="pbtn" title={p.isFavorite ? "Aus Favoriten entfernen" : "Zu Favoriten"} onClick={p.onToggleFavorite}>
+          <button className="pbtn" title={p.isFavorite ? t("Aus Favoriten entfernen") : t("Zu Favoriten")} onClick={p.onToggleFavorite}>
             <Icon name={p.isFavorite ? "star" : "star-outline"} size={20} />
           </button>
           {p.multi && !p.fullscreen && (
-            <button className="pbtn" title="Groß anzeigen" onClick={p.onFocus}>
+            <button className="pbtn" title={t("Groß anzeigen")} onClick={p.onFocus}>
               <Icon name="expand" size={18} />
             </button>
           )}
-          <button className="pbtn" title="Chat dieses Kanals" onClick={p.onChat}>
+          <button className="pbtn" title={t("Chat dieses Kanals")} onClick={p.onChat}>
             <Icon name="chat" size={18} />
           </button>
-          <button className="pbtn" title="Schließen" onClick={p.onClose}>
+          <button className="pbtn" title={t("Schließen")} onClick={p.onClose}>
             <Icon name="close-fill" size={20} />
           </button>
         </div>
       </div>
 
       <div className="tile-bottom" onMouseDown={(e) => e.stopPropagation()} onDoubleClick={(e) => e.stopPropagation()}>
-        <button className="pbtn" onClick={togglePlay} title={paused ? "Abspielen" : "Pause"}>
+        <button className="pbtn" onClick={togglePlay} title={paused ? t("Abspielen") : t("Pause")}>
           <Icon name={paused ? "play" : "pause"} size={24} />
         </button>
         <div className="volume">
-          <button className="pbtn" onClick={toggleMute} title={effectiveMuted ? "Ton an" : "Stumm"}>
+          <button className="pbtn" onClick={toggleMute} title={effectiveMuted ? t("Ton an") : t("Stumm")}>
             <Icon name={effectiveMuted || volume === 0 ? "volume-off" : volume > 0.5 ? "volume-high" : "volume-low"} size={22} />
           </button>
           <input
@@ -294,17 +295,17 @@ export function PlayerTile(p: Props) {
             }}
           />
         </div>
-        <button className="live-btn" onClick={goLive} title="Zur Live-Kante springen">
+        <button className="live-btn" onClick={goLive} title={t("Zur Live-Kante springen")}>
           <span className={status.kind === "playing" && !paused ? "live-dot" : "live-dot off"} /> LIVE
         </button>
         <div className="spacer" />
         <div className="quality">
-          <button className={`pbtn ${menu ? "on" : ""}`} onClick={() => setMenu((m) => !m)} title={`Qualität: ${currentLabel}`}>
+          <button className={`pbtn ${menu ? "on" : ""}`} onClick={() => setMenu((m) => !m)} title={`${t("Qualität")}: ${t(currentLabel)}`}>
             <Icon name="settings" size={20} />
           </button>
           {menu && (
             <div className="quality-menu">
-              <div className="quality-head">Qualität</div>
+              <div className="quality-head">{t("Qualität")}</div>
               {levels.map((l) => (
                 <button
                   key={l.index}
@@ -316,7 +317,7 @@ export function PlayerTile(p: Props) {
                   }}
                 >
                   {l.index === level ? <Icon name="check" size={14} /> : <span className="qspace" />}
-                  {l.label}
+                  {t(l.label)}
                 </button>
               ))}
               <button
@@ -325,17 +326,17 @@ export function PlayerTile(p: Props) {
                   setReload((r) => r + 1);
                 }}
               >
-                <Icon name="refresh" size={14} /> Neu laden
+                <Icon name="refresh" size={14} /> {t("Neu laden")}
               </button>
             </div>
           )}
         </div>
         {p.fullscreen && (
-          <button className="pbtn" onClick={p.onChat} title="Chat ein-/ausblenden">
+          <button className="pbtn" onClick={p.onChat} title={t("Chat ein-/ausblenden")}>
             <Icon name="chat" size={20} />
           </button>
         )}
-        <button className="pbtn" onClick={fullscreen} title={p.fullscreen ? "Vollbild beenden (Esc)" : "Vollbild (Doppelklick)"}>
+        <button className="pbtn" onClick={fullscreen} title={p.fullscreen ? t("Vollbild beenden (Esc)") : t("Vollbild (Doppelklick)")}>
           <Icon name={p.fullscreen ? "fullscreen-exit" : "fullscreen"} size={24} />
         </button>
       </div>

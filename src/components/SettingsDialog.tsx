@@ -3,6 +3,7 @@ import { openUrl } from "@tauri-apps/plugin-opener";
 import { api, type AuthInfo, type DeviceCode } from "../lib/api";
 import { CHAT_FONTS, useSettings, updateSettings } from "../lib/settings";
 import { playMentionSound } from "../lib/sound";
+import { LANGUAGES, useT, type Lang } from "../lib/i18n";
 
 export type SettingsTab = "account" | "chat" | "player";
 type Tab = SettingsTab;
@@ -53,6 +54,7 @@ function Check(props: { label: string; hint?: string; checked: boolean; onChange
 
 export function SettingsDialog({ auth, initialTab, onClose, onAuthChanged }: Props) {
   const s = useSettings();
+  const t = useT();
   const [tab, setTab] = useState<Tab>(initialTab ?? (auth?.logged_in ? "chat" : "account"));
   const [clientId, setClientId] = useState(auth?.client_id ?? "");
   const [device, setDevice] = useState<DeviceCode | null>(null);
@@ -78,7 +80,7 @@ export function SettingsDialog({ auth, initialTab, onClose, onAuthChanged }: Pro
       const poll = async () => {
         if (Date.now() > deadline) {
           setDevice(null);
-          setError("Code abgelaufen – bitte erneut versuchen.");
+          setError(t("Code abgelaufen – bitte erneut versuchen."));
           return;
         }
         try {
@@ -114,12 +116,27 @@ export function SettingsDialog({ auth, initialTab, onClose, onAuthChanged }: Pro
     <div className="modal-bg" onMouseDown={onClose}>
       <div className="modal" onMouseDown={(e) => e.stopPropagation()}>
         <div className="modal-head">
-          <h2>Einstellungen</h2>
+          <h2>{t("Einstellungen")}</h2>
           <button onClick={onClose}>✕</button>
         </div>
 
+        <label className="row lang-row">
+          <span className="row-label">🌐 {t("Sprache")} / Language</span>
+          <div className="seg lang-seg">
+            {LANGUAGES.map((l) => (
+              <button
+                key={l.id}
+                className={s.language === l.id ? "on" : ""}
+                onClick={() => updateSettings({ language: l.id as Lang })}
+              >
+                {l.label}
+              </button>
+            ))}
+          </div>
+        </label>
+
         <div className="tabs">
-          <button className={tab === "account" ? "on" : ""} onClick={() => setTab("account")}>Konto</button>
+          <button className={tab === "account" ? "on" : ""} onClick={() => setTab("account")}>{t("Konto")}</button>
           <button className={tab === "chat" ? "on" : ""} onClick={() => setTab("chat")}>Chat</button>
           <button className={tab === "player" ? "on" : ""} onClick={() => setTab("player")}>Player</button>
         </div>
@@ -128,73 +145,73 @@ export function SettingsDialog({ auth, initialTab, onClose, onAuthChanged }: Pro
           <section>
             {auth?.logged_in ? (
               <div className="row">
-                Angemeldet als <b>{auth.login}</b>
+                {t("Angemeldet als")} <b>{auth.login}</b>
                 <div className="spacer" />
-                <button onClick={() => logout("all")}>Abmelden</button>
+                <button onClick={() => logout("all")}>{t("Abmelden")}</button>
               </div>
             ) : (
-              <p className="muted">Ohne Login kannst du Streams schauen und den Chat lesen.</p>
+              <p className="muted">{t("Ohne Login kannst du Streams schauen und den Chat lesen.")}</p>
             )}
 
             <div className="account-row">
               <div>
-                <b>twitch.tv-Login</b>
+                <b>{t("twitch.tv-Login")}</b>
                 <div className="muted small">
                   {auth?.web
-                    ? "Aktiv – Turbo/Abos (keine Werbung), Kanalpunkte und Chat."
-                    : "Normale Twitch-Anmeldung im eigenen Fenster. Nötig für Turbo/Abo ohne Werbung und Kanalpunkte."}
+                    ? t("Aktiv – Turbo/Abos (keine Werbung), Kanalpunkte und Chat.")
+                    : t("Normale Twitch-Anmeldung im eigenen Fenster. Nötig für Turbo/Abo ohne Werbung und Kanalpunkte.")}
                 </div>
               </div>
               {auth?.web ? (
-                <button onClick={() => logout("web")}>Trennen</button>
+                <button onClick={() => logout("web")}>{t("Trennen")}</button>
               ) : (
                 <button className="primary" onClick={webLogin}>
-                  Mit Twitch anmelden
+                  {t("Mit Twitch anmelden")}
                 </button>
               )}
             </div>
 
-            <h3>Gefolgte Kanäle</h3>
+            <h3>{t("Gefolgte Kanäle")}</h3>
             <label className="row">
-              <span className="row-label">Automatisch aktualisieren</span>
+              <span className="row-label">{t("Automatisch aktualisieren")}</span>
               <select
                 value={s.followRefreshMin}
                 onChange={(e) => updateSettings({ followRefreshMin: Number(e.target.value) })}
               >
                 {[1, 2, 5, 10, 15, 30].map((m) => (
                   <option key={m} value={m}>
-                    alle {m} Min.
+                    {t("alle {m} Min.", { m })}
                   </option>
                 ))}
               </select>
             </label>
-            <p className="muted small">Mit ⟳ neben „Gefolgt · Live“ jederzeit sofort aktualisieren.</p>
+            <p className="muted small">{t("Mit ⟳ neben „Gefolgt · Live“ jederzeit sofort aktualisieren.")}</p>
 
-            <h3>Kanalpunkte</h3>
+            <h3>{t("Kanalpunkte")}</h3>
             <Check
-              label="Bonus-Truhe automatisch einsammeln"
-              hint="für alle geöffneten Kanäle"
+              label={t("Bonus-Truhe automatisch einsammeln")}
+              hint={t("für alle geöffneten Kanäle")}
               checked={s.autoClaimPoints}
               onChange={(v) => updateSettings({ autoClaimPoints: v })}
             />
 
             <button className="link" onClick={() => setShowAdvanced((v) => !v)}>
-              {showAdvanced ? "▾" : "▸"} Erweitert: eigene Twitch-App (optional)
+              {showAdvanced ? "▾" : "▸"} {t("Erweitert: eigene Twitch-App (optional)")}
             </button>
 
             {showAdvanced &&
               (auth?.app ? (
                 <div className="account-row">
                   <div>
-                    <b>Eigene App verbunden</b>
-                    <div className="muted small">Wird für Chat und gefolgte Kanäle bevorzugt.</div>
+                    <b>{t("Eigene App verbunden")}</b>
+                    <div className="muted small">{t("Wird für Chat und gefolgte Kanäle bevorzugt.")}</div>
                   </div>
-                  <button onClick={() => logout("app")}>Trennen</button>
+                  <button onClick={() => logout("app")}>{t("Trennen")}</button>
                 </div>
               ) : (
                 <>
                   <p className="muted">
-                    Falls Chat oder gefolgte Kanäle mit dem twitch.tv-Login nicht klappen: Erstelle auf{" "}
+                    {t("Falls Chat oder gefolgte Kanäle mit dem twitch.tv-Login nicht klappen: Erstelle auf")}{" "}
                     <a
                       href="#"
                       onClick={(e) => {
@@ -204,19 +221,19 @@ export function SettingsDialog({ auth, initialTab, onClose, onAuthChanged }: Pro
                     >
                       dev.twitch.tv
                     </a>{" "}
-                    eine App mit Client-Typ <b>„Öffentlich“</b> (OAuth-Redirect: <code>http://localhost</code>) und
-                    trage die Client-ID hier ein.
+                    {t("eine App mit Client-Typ")} <b>{t("„Öffentlich“")}</b> (OAuth-Redirect: <code>http://localhost</code>){" "}
+                    {t("und trage die Client-ID hier ein.")}
                   </p>
                   <div className="row">
                     <input value={clientId} onChange={(e) => setClientId(e.target.value)} placeholder="Client-ID" spellCheck={false} />
                     <button disabled={!clientId.trim() || !!device} onClick={startLogin}>
-                      Verbinden
+                      {t("Verbinden")}
                     </button>
                   </div>
                   {device && (
                     <div className="device">
-                      Im Browser bestätigen. Code: <span className="code">{device.user_code}</span>
-                      <button onClick={() => openUrl(device.verification_uri)}>Seite erneut öffnen</button>
+                      {t("Im Browser bestätigen. Code:")} <span className="code">{device.user_code}</span>
+                      <button onClick={() => openUrl(device.verification_uri)}>{t("Seite erneut öffnen")}</button>
                     </div>
                   )}
                 </>
@@ -228,9 +245,9 @@ export function SettingsDialog({ auth, initialTab, onClose, onAuthChanged }: Pro
         {tab === "chat" && (
           <>
             <section>
-              <h3>Darstellung</h3>
+              <h3>{t("Darstellung")}</h3>
               <label className="row">
-                <span className="row-label">Schriftart</span>
+                <span className="row-label">{t("Schriftart")}</span>
                 <select
                   value={s.chatFontFamily}
                   onChange={(e) => updateSettings({ chatFontFamily: e.target.value })}
@@ -243,72 +260,72 @@ export function SettingsDialog({ auth, initialTab, onClose, onAuthChanged }: Pro
                   ))}
                 </select>
               </label>
-              <Range label="Schriftgröße" min={11} max={24} value={s.chatFontSize} format={(v) => `${v}px`} onChange={(v) => updateSettings({ chatFontSize: v })} />
-              <Range label="Zeilenabstand" min={1.2} max={2.2} step={0.1} value={s.chatLineSpacing} format={(v) => v.toFixed(1)} onChange={(v) => updateSettings({ chatLineSpacing: v })} />
-              <Range label="Emote-Größe" min={0.6} max={2} step={0.1} value={s.emoteScale} format={(v) => `${Math.round(v * 100)}%`} onChange={(v) => updateSettings({ emoteScale: v })} />
+              <Range label={t("Schriftgröße")} min={11} max={24} value={s.chatFontSize} format={(v) => `${v}px`} onChange={(v) => updateSettings({ chatFontSize: v })} />
+              <Range label={t("Zeilenabstand")} min={1.2} max={2.2} step={0.1} value={s.chatLineSpacing} format={(v) => v.toFixed(1)} onChange={(v) => updateSettings({ chatLineSpacing: v })} />
+              <Range label={t("Emote-Größe")} min={0.6} max={2} step={0.1} value={s.emoteScale} format={(v) => `${Math.round(v * 100)}%`} onChange={(v) => updateSettings({ emoteScale: v })} />
               <div className="font-preview" style={{ fontFamily: s.chatFontFamily, fontSize: s.chatFontSize, lineHeight: s.chatLineSpacing }}>
-                <b style={{ color: "#a970ff" }}>Beispiel</b>: So sieht der Chat aus. Kappa 123
+                <b style={{ color: "#a970ff" }}>{t("Beispiel")}</b>: {t("So sieht der Chat aus.")} Kappa 123
               </div>
-              <Check label="Zeitstempel anzeigen" checked={s.showTimestamps} onChange={(v) => updateSettings({ showTimestamps: v })} />
-              <Check label="Zeilen abwechselnd hinterlegen" checked={s.chatAltRows} onChange={(v) => updateSettings({ chatAltRows: v })} />
-              <Check label="Badges anzeigen" checked={s.showBadges} onChange={(v) => updateSettings({ showBadges: v })} />
-              <Check label="7TV-Namensfarben (Paints)" checked={s.show7tvPaints} onChange={(v) => updateSettings({ show7tvPaints: v })} />
+              <Check label={t("Zeitstempel anzeigen")} checked={s.showTimestamps} onChange={(v) => updateSettings({ showTimestamps: v })} />
+              <Check label={t("Zeilen abwechselnd hinterlegen")} checked={s.chatAltRows} onChange={(v) => updateSettings({ chatAltRows: v })} />
+              <Check label={t("Badges anzeigen")} checked={s.showBadges} onChange={(v) => updateSettings({ showBadges: v })} />
+              <Check label={t("7TV-Namensfarben (Paints)")} checked={s.show7tvPaints} onChange={(v) => updateSettings({ show7tvPaints: v })} />
             </section>
 
             <section>
-              <h3>Erwähnungen</h3>
-              <Check label="Ton abspielen, wenn ich erwähnt werde" checked={s.mentionSound} onChange={(v) => updateSettings({ mentionSound: v })} />
+              <h3>{t("Erwähnungen")}</h3>
+              <Check label={t("Ton abspielen, wenn ich erwähnt werde")} checked={s.mentionSound} onChange={(v) => updateSettings({ mentionSound: v })} />
               <div className="row">
-                <span className="row-label">Lautstärke</span>
+                <span className="row-label">{t("Lautstärke")}</span>
                 <input type="range" min={0.05} max={1} step={0.05} value={s.mentionVolume} onChange={(e) => updateSettings({ mentionVolume: Number(e.target.value) })} />
                 <button onClick={() => playMentionSound(s.mentionVolume)}>Test</button>
               </div>
               <label className="row">
-                <span className="row-label">Weitere Wörter</span>
+                <span className="row-label">{t("Weitere Wörter")}</span>
                 <input
                   value={s.highlightWords}
                   onChange={(e) => updateSettings({ highlightWords: e.target.value })}
-                  placeholder="z. B. Spitzname, Giveaway (kommagetrennt)"
+                  placeholder={t("z. B. Spitzname, Giveaway (kommagetrennt)")}
                   style={{ flex: 1 }}
                 />
               </label>
             </section>
 
             <section>
-              <h3>Geschwindigkeit</h3>
+              <h3>{t("Geschwindigkeit")}</h3>
               <Range
-                label="Max. Nachrichten/s"
+                label={t("Max. Nachrichten/s")}
                 min={0}
                 max={30}
                 value={s.chatMaxRate}
-                format={(v) => (v === 0 ? "unbegrenzt" : `${v}/s`)}
+                format={(v) => (v === 0 ? t("unbegrenzt") : `${v}/s`)}
                 onChange={(v) => updateSettings({ chatMaxRate: v })}
               />
-              <p className="muted small">Macht schnelle Chats langsamer. Bei zu viel Rückstau werden ältere Nachrichten übersprungen.</p>
+              <p className="muted small">{t("Macht schnelle Chats langsamer. Bei zu viel Rückstau werden ältere Nachrichten übersprungen.")}</p>
               <Range
-                label="Verzögerung"
+                label={t("Verzögerung")}
                 min={0}
                 max={15}
                 step={0.5}
                 value={s.chatDelay}
-                format={(v) => (v === 0 ? "aus" : `${v}s`)}
+                format={(v) => (v === 0 ? t("aus") : `${v}s`)}
                 onChange={(v) => updateSettings({ chatDelay: v })}
               />
-              <p className="muted small">Zeigt Nachrichten später an – passend zur Verzögerung des Streams (keine Spoiler).</p>
-              <Check label="Chat pausieren, solange die Maus darüber ist" checked={s.pauseOnHover} onChange={(v) => updateSettings({ pauseOnHover: v })} />
+              <p className="muted small">{t("Zeigt Nachrichten später an – passend zur Verzögerung des Streams (keine Spoiler).")}</p>
+              <Check label={t("Chat pausieren, solange die Maus darüber ist")} checked={s.pauseOnHover} onChange={(v) => updateSettings({ pauseOnHover: v })} />
             </section>
 
             <section>
-              <h3>Verlauf</h3>
+              <h3>{t("Verlauf")}</h3>
               <Check
-                label="Beim Öffnen die letzten Nachrichten laden"
-                hint="über recent-messages.robotty.de"
+                label={t("Beim Öffnen die letzten Nachrichten laden")}
+                hint={t("über recent-messages.robotty.de")}
                 checked={s.loadChatHistory}
                 onChange={(v) => updateSettings({ loadChatHistory: v })}
               />
               <Check
-                label="Im Nutzer-Fenster ältere Nachrichten zeigen"
-                hint="aus öffentlichen Logs von logs.ivr.fi, nicht für jeden Kanal verfügbar"
+                label={t("Im Nutzer-Fenster ältere Nachrichten zeigen")}
+                hint={t("aus öffentlichen Logs von logs.ivr.fi, nicht für jeden Kanal verfügbar")}
                 checked={s.loadUserLogs}
                 onChange={(v) => updateSettings({ loadUserLogs: v })}
               />
@@ -318,17 +335,17 @@ export function SettingsDialog({ auth, initialTab, onClose, onAuthChanged }: Pro
 
         {tab === "player" && (
           <section>
-            <Check label="Niedrige Latenz" hint="holt Verzögerung automatisch auf" checked={s.lowLatency} onChange={(v) => updateSettings({ lowLatency: v })} />
-            <Check label="Multiview: nur den angeklickten Stream hörbar" checked={s.audioFocus} onChange={(v) => updateSettings({ audioFocus: v })} />
+            <Check label={t("Niedrige Latenz")} hint={t("holt Verzögerung automatisch auf")} checked={s.lowLatency} onChange={(v) => updateSettings({ lowLatency: v })} />
+            <Check label={t("Multiview: nur den angeklickten Stream hörbar")} checked={s.audioFocus} onChange={(v) => updateSettings({ audioFocus: v })} />
             <label className="row">
-              <span className="row-label">Standardqualität</span>
+              <span className="row-label">{t("Standardqualität")}</span>
               <select value={s.defaultQuality} onChange={(e) => updateSettings({ defaultQuality: e.target.value as "auto" | "source" })}>
-                <option value="auto">Auto (an Kachelgröße angepasst)</option>
-                <option value="source">Source (beste)</option>
+                <option value="auto">{t("Auto (an Kachelgröße angepasst)")}</option>
+                <option value="source">{t("Source (beste)")}</option>
               </select>
             </label>
             <p className="muted small">
-              Tipp: „Auto“ schont im Multiview CPU/GPU deutlich. Änderungen gelten für neu geöffnete Streams.
+              {t("Tipp: „Auto“ schont im Multiview CPU/GPU deutlich. Änderungen gelten für neu geöffnete Streams.")}
             </p>
           </section>
         )}

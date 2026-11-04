@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 
 import { updateSettings, useSettings, getSettings } from "../lib/settings";
 import { Icon } from "./Icon";
+import { t, useT } from "../lib/i18n";
 import { openUrl as openExternal } from "@tauri-apps/plugin-opener";
 
 interface Benefit {
@@ -44,11 +45,11 @@ function claimable(d: TimeDrop) {
 
 function endsIn(iso: string) {
   const ms = new Date(iso).getTime() - Date.now();
-  if (ms <= 0) return "beendet";
+  if (ms <= 0) return t("beendet");
   const h = Math.floor(ms / 3_600_000);
-  if (h >= 48) return `noch ${Math.floor(h / 24)} Tage`;
-  if (h >= 1) return `noch ${h} Std.`;
-  return `noch ${Math.max(1, Math.floor(ms / 60_000))} Min.`;
+  if (h >= 48) return t("noch {n} Tage", { n: Math.floor(h / 24) });
+  if (h >= 1) return t("noch {n} Std.", { n: h });
+  return t("noch {n} Min.", { n: Math.max(1, Math.floor(ms / 60_000)) });
 }
 
 function boxArt(url: string) {
@@ -58,6 +59,7 @@ function boxArt(url: string) {
 /** Drops-Symbol oben rechts (neben dem Benutzernamen) mit Inventar-Popup. */
 export function DropsButton() {
   const settings = useSettings();
+  useT();
   const [open, setOpen] = useState(false);
   const [progress, setProgress] = useState<Campaign[]>([]);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
@@ -73,7 +75,7 @@ export function DropsButton() {
     if (!d.self?.dropInstanceID) return false;
     try {
       await invoke("claim_drop", { dropInstanceId: d.self.dropInstanceID });
-      if (!silent) setMsg(`„${d.benefitEdges[0]?.benefit.name ?? d.name}“ eingesammelt!`);
+      if (!silent) setMsg(t("„{name}“ eingesammelt!", { name: d.benefitEdges[0]?.benefit.name ?? d.name }));
       return true;
     } catch (e) {
       const m = String(e);
@@ -96,7 +98,7 @@ export function DropsButton() {
         let claimedAny = false;
         for (const c of list) for (const d of c.timeBasedDrops ?? []) if (claimable(d) && (await claim(d, true))) claimedAny = true;
         if (claimedAny) {
-          setMsg("Fertige Drops wurden automatisch eingesammelt.");
+          setMsg(t("Fertige Drops wurden automatisch eingesammelt."));
           const again = await invoke<any>("drops_inventory");
           setProgress(again?.inventory?.dropCampaignsInProgress ?? []);
         }
@@ -150,7 +152,7 @@ export function DropsButton() {
     <div className="drops" ref={ref}>
       <button
         className={`icon-btn drops-btn ${open ? "on" : ""}`}
-        title={ready ? `${ready} Drop(s) bereit zum Einsammeln` : active ? `${active} Drop(s) in Arbeit` : "Drops"}
+        title={ready ? t("{n} Drop(s) bereit zum Einsammeln", { n: ready }) : active ? t("{n} Drop(s) in Arbeit", { n: active }) : "Drops"}
         onClick={() => setOpen((o) => !o)}
       >
         <Icon name="gift" size={20} />
@@ -162,7 +164,7 @@ export function DropsButton() {
           <div className="drops-head">
             <b>Drops</b>
             <div className="spacer" />
-            <label className="drops-auto" title="Fertige Drops automatisch einsammeln" style={blocked ? { display: "none" } : undefined}>
+            <label className="drops-auto" title={t("Fertige Drops automatisch einsammeln")} style={blocked ? { display: "none" } : undefined}>
               Auto
               <span className="switch">
                 <input
@@ -181,14 +183,13 @@ export function DropsButton() {
             {error && <div className="error small drops-msg">{error}</div>}
             {blocked && (
               <div className="pm-info drops-msg">
-                Twitch lässt Drops nur über die eigene Webseite einsammeln („integrity check“). „Einsammeln“
-                öffnet dein Drops-Inventar von Twitch in deinem Browser.
+                {t("Twitch lässt Drops nur über die eigene Webseite einsammeln („integrity check“). „Einsammeln“ öffnet dein Drops-Inventar von Twitch in deinem Browser.")}
               </div>
             )}
 
-            <div className="section-title">In Arbeit</div>
+            <div className="section-title">{t("In Arbeit")}</div>
             {!loading && progress.length === 0 && (
-              <div className="hint">Keine Drops in Arbeit. Schau einen Stream mit aktivierten Drops.</div>
+              <div className="hint">{t("Keine Drops in Arbeit. Schau einen Stream mit aktivierten Drops.")}</div>
             )}
             {progress.map((c) => (
               <div key={c.id} className="drop-campaign">
@@ -201,7 +202,7 @@ export function DropsButton() {
                     </div>
                     {c.self && !c.self.isAccountConnected && (
                       <button className="link small warn" onClick={() => c.accountLinkURL && openExternal(c.accountLinkURL)}>
-                        ⚠ Konto nicht verknüpft – verknüpfen
+                        {t("⚠ Konto nicht verknüpft – verknüpfen")}
                       </button>
                     )}
                   </div>
@@ -216,14 +217,14 @@ export function DropsButton() {
                       <div className="drop-info">
                         <div className="drop-name">{b?.name ?? d.name}</div>
                         {d.self?.isClaimed ? (
-                          <div className="muted small">✓ Eingesammelt</div>
+                          <div className="muted small">{t("✓ Eingesammelt")}</div>
                         ) : (
                           <>
                             <div className="drop-bar">
                               <div style={{ width: `${pct}%` }} />
                             </div>
                             <div className="muted small">
-                              {cur} / {d.requiredMinutesWatched} Min. ({pct} %)
+                              {t("{cur} / {max} Min. ({pct} %)", { cur, max: d.requiredMinutesWatched, pct })}
                             </div>
                           </>
                         )}
@@ -237,7 +238,7 @@ export function DropsButton() {
                             if (await claim(d)) await loadInventory();
                             else if (dropsBlocked) openDrops("inventory");
                           }}>
-                          Einsammeln
+                          {t("Einsammeln")}
                         </button>
                       )}
                     </div>
@@ -248,15 +249,15 @@ export function DropsButton() {
 
             {campaignsUnavailable && (
               <>
-                <div className="section-title">Weitere Kampagnen</div>
+                <div className="section-title">{t("Weitere Kampagnen")}</div>
                 <button className="link small" onClick={() => openDrops("campaigns")}>
-                  Alle aktiven Kampagnen auf Twitch ansehen ↗
+                  {t("Alle aktiven Kampagnen auf Twitch ansehen ↗")}
                 </button>
               </>
             )}
             {others.length > 0 && (
               <>
-                <div className="section-title">Weitere Kampagnen ({others.length})</div>
+                <div className="section-title">{t("Weitere Kampagnen")} ({others.length})</div>
                 {(showAll ? others : others.slice(0, 8)).map((c) => (
                   <div key={c.id} className="drop-campaign-row" title={c.name}>
                     {c.game?.boxArtURL && <img className="drop-art small" src={boxArt(c.game.boxArtURL)} alt="" />}
@@ -264,14 +265,14 @@ export function DropsButton() {
                       <div className="entry-name">{c.game?.displayName ?? c.name}</div>
                       <div className="entry-game">
                         {c.name} · {endsIn(c.endAt)}
-                        {c.self && !c.self.isAccountConnected ? " · nicht verknüpft" : ""}
+                        {c.self && !c.self.isAccountConnected ? ` · ${t("nicht verknüpft")}` : ""}
                       </div>
                     </div>
                   </div>
                 ))}
                 {!showAll && others.length > 8 && (
                   <button className="link small" onClick={() => setShowAll(true)}>
-                    Alle anzeigen
+                    {t("Alle anzeigen")}
                   </button>
                 )}
               </>
@@ -280,10 +281,10 @@ export function DropsButton() {
 
           <div className="drops-foot">
             <button className="link small" onClick={() => openDrops("inventory")}>
-              Inventar auf twitch.tv ↗
+              {t("Inventar auf twitch.tv ↗")}
             </button>
             <button className="link small" onClick={() => openDrops("campaigns")}>
-              Alle Kampagnen ↗
+              {t("Alle Kampagnen ↗")}
             </button>
           </div>
         </div>

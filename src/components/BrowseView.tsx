@@ -2,6 +2,7 @@ import { useEffect, useState, type MouseEvent } from "react";
 import { boxArt, helixApi, thumb, type HelixGame, type HelixStream } from "../lib/api";
 import { toggleFavGame, updateSettings, useSettings } from "../lib/settings";
 import { Icon } from "./Icon";
+import { useT } from "../lib/i18n";
 
 export type BrowseTarget = { kind: "categories" } | { kind: "game"; game: HelixGame };
 
@@ -28,6 +29,7 @@ function formatViewers(n: number) {
 /** Überlagert den Multiview (Streams laufen im Hintergrund weiter). */
 export function BrowseView({ target, canAdd, onNavigate, onOpen, onClose }: Props) {
   const settings = useSettings();
+  const t = useT();
   const [games, setGames] = useState<HelixGame[]>([]);
   const [streams, setStreams] = useState<HelixStream[]>([]);
   const [loading, setLoading] = useState(true);
@@ -60,17 +62,17 @@ export function BrowseView({ target, canAdd, onNavigate, onOpen, onClose }: Prop
       <div className="browse-head">
         {target.kind === "game" && (
           <button className="link" onClick={() => onNavigate({ kind: "categories" })}>
-            ‹ Kategorien
+            {t("‹ Kategorien")}
           </button>
         )}
         {target.kind === "game" && (
           <img className="browse-art" src={boxArt(target.game.box_art_url, 52, 72)} alt="" />
         )}
-        <h2>{target.kind === "game" ? target.game.name : "Kategorien"}</h2>
+        <h2>{target.kind === "game" ? target.game.name : t("Kategorien")}</h2>
         {target.kind === "game" && (
           <button
             className={`fav-toggle inline ${isFav(target.game.id) ? "on" : ""}`}
-            title="Lieblingskategorie"
+            title={t("Lieblingskategorie")}
             onClick={() => toggleFavGame(target.game)}
           >
             {isFav(target.game.id) ? "★" : "☆"}
@@ -79,10 +81,10 @@ export function BrowseView({ target, canAdd, onNavigate, onOpen, onClose }: Prop
         {target.kind === "categories" && (
           <div className="chip-group">
             <button className={!onlyFav ? "chip on" : "chip"} onClick={() => setOnlyFav(false)}>
-              Alle
+              {t("Alle")}
             </button>
             <button className={onlyFav ? "chip on" : "chip"} onClick={() => setOnlyFav(true)}>
-              ★ Favoriten
+              {t("★ Favoriten")}
             </button>
           </div>
         )}
@@ -94,12 +96,12 @@ export function BrowseView({ target, canAdd, onNavigate, onOpen, onClose }: Prop
           >
             {LANGUAGES.map(([v, l]) => (
               <option key={v} value={v}>
-                {l}
+                {t(l)}
               </option>
             ))}
           </select>
         )}
-        <button className="icon-btn" title="Schließen" onClick={onClose}>
+        <button className="icon-btn" title={t("Schließen")} onClick={onClose}>
           <Icon name="close" />
         </button>
       </div>
@@ -111,7 +113,7 @@ export function BrowseView({ target, canAdd, onNavigate, onOpen, onClose }: Prop
         {!loading && target.kind === "categories" && (
           <>
             {onlyFav && settings.favGames.length === 0 && (
-              <div className="hint">Noch keine Lieblingskategorien – markiere welche mit ☆.</div>
+              <div className="hint">{t("Noch keine Lieblingskategorien – markiere welche mit ☆.")}</div>
             )}
             <div className="game-grid">
               {(onlyFav ? settings.favGames : games).map((g) => {
@@ -122,7 +124,7 @@ export function BrowseView({ target, canAdd, onNavigate, onOpen, onClose }: Prop
                       <img src={boxArt(g.box_art_url, 144, 192)} alt="" loading="lazy" />
                       <button
                         className={`fav-toggle ${fav ? "on" : ""}`}
-                        title={fav ? "Aus Lieblingskategorien entfernen" : "Zu Lieblingskategorien"}
+                        title={fav ? t("Aus Lieblingskategorien entfernen") : t("Zu Lieblingskategorien")}
                         onClick={(e) => {
                           e.stopPropagation();
                           toggleFavGame(g);
@@ -141,18 +143,18 @@ export function BrowseView({ target, canAdd, onNavigate, onOpen, onClose }: Prop
 
         {!loading && target.kind === "game" && (
           <>
-            {streams.length === 0 && !error && <div className="hint">Gerade keine Streams.</div>}
+            {streams.length === 0 && !error && <div className="hint">{t("Gerade keine Streams.")}</div>}
             <div className="stream-grid">
               {streams.map((s) => (
-                <div key={s.id} className="stream-card" onClick={(e) => open(e, s.user_login)} title="Klick: öffnen · Strg+Klick: zum Multiview">
+                <div key={s.id} className="stream-card" onClick={(e) => open(e, s.user_login)} title={t("Klick: öffnen · Strg+Klick: zum Multiview")}>
                   <div className="thumb">
                     <img src={thumb(s.thumbnail_url)} alt="" loading="lazy" />
                     <span className="live-pill">LIVE</span>
-                    <span className="viewer-pill">{formatViewers(s.viewer_count)} Zuschauer</span>
+                    <span className="viewer-pill">{t("{n} Zuschauer", { n: formatViewers(s.viewer_count) })}</span>
                     <button
                       className="thumb-add"
                       disabled={!canAdd}
-                      title="Zum Multiview hinzufügen"
+                      title={t("Zum Multiview hinzufügen")}
                       onClick={(e) => {
                         e.stopPropagation();
                         onOpen(s.user_login, true);

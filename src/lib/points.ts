@@ -2,6 +2,7 @@ import { useSyncExternalStore } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { getSettings } from "./settings";
+import { currentLang, locale } from "./i18n";
 
 export interface PointsState {
   balance?: number;
@@ -118,7 +119,7 @@ export function usePoints(channel: string | undefined): PointsState | undefined 
 }
 
 export function formatPoints(n: number) {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace(".0", "")} Mio.`;
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace(".0", "")}${currentLang() === "en" ? "M" : " Mio."}`;
   if (n >= 10_000) return `${(n / 1000).toFixed(1).replace(".0", "")}K`;
-  return n.toLocaleString("de-DE");
+  return n.toLocaleString(locale());
 }

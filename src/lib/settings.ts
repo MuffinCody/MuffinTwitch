@@ -1,6 +1,8 @@
 import { useSyncExternalStore } from "react";
 
 export interface Settings {
+  /** Sprache der Oberfläche */
+  language: "de" | "en";
   chatFontSize: number;
   showTimestamps: boolean;
   chatWidth: number;
@@ -58,6 +60,8 @@ export interface Settings {
 }
 
 const DEFAULTS: Settings = {
+  // Beim ersten Start: Sprache von Windows übernehmen
+  language: (typeof navigator !== "undefined" && (navigator.language || "de").toLowerCase().startsWith("de")) ? "de" : "en",
   chatFontSize: 14,
   showTimestamps: false,
   chatWidth: 340,
@@ -138,6 +142,13 @@ function load(): Settings {
 
 let current = load();
 const listeners = new Set<() => void>();
+
+export function subscribeSettings(cb: () => void) {
+  listeners.add(cb);
+  return () => {
+    listeners.delete(cb);
+  };
+}
 
 export function getSettings() {
   return current;
