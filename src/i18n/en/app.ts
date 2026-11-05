@@ -20,7 +20,6 @@ export const app: Record<string, string> = {
   // Benutzermenü
   "Anmelden": "Log in",
   "Turbo/Abo-Vorteile aktiv": "Turbo/sub benefits active",
-  "Angemeldet": "Logged in",
 
   // Seitenleiste
   "Favoriten": "Favorites",

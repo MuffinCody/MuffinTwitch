@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { api, type AuthInfo, type DeviceCode } from "../lib/api";
+import { api, type AuthInfo } from "../lib/api";
 import { CHAT_FONTS, useSettings, updateSettings } from "../lib/settings";
 import { playMentionSound } from "../lib/sound";
 import { LANGUAGES, useT, type Lang } from "../lib/i18n";
@@ -160,54 +160,15 @@ export function SettingsDialog({ auth, initialTab, onClose, onAuthChanged }: Pro
   useEffect(() => {
     getVersion().then(setVersion).catch(() => {});
   }, []);
-  const [clientId, setClientId] = useState(auth?.client_id ?? "");
-  const [device, setDevice] = useState<DeviceCode | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [showAdvanced, setShowAdvanced] = useState(!!auth?.app);
-  const pollRef = useRef<number | undefined>(undefined);
-
-  useEffect(() => () => window.clearTimeout(pollRef.current), []);
   useEffect(() => {
     const key = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", key);
     return () => window.removeEventListener("keydown", key);
   }, [onClose]);
 
-  const startLogin = async () => {
-    setError(null);
-    try {
-      await api.authSetClientId(clientId);
-      const d = await api.authStart();
-      setDevice(d);
-      openUrl(d.verification_uri).catch(() => {});
-      const deadline = Date.now() + d.expires_in * 1000;
-      const poll = async () => {
-        if (Date.now() > deadline) {
-          setDevice(null);
-          setError(t("Code abgelaufen – bitte erneut versuchen."));
-          return;
-        }
-        try {
-          const r = await api.authPoll(d.device_code);
-          if (r === "ok") {
-            setDevice(null);
-            onAuthChanged();
-            return;
-          }
-          pollRef.current = window.setTimeout(poll, Math.max(2, d.interval) * 1000);
-        } catch (e) {
-          setDevice(null);
-          setError(String(e));
-        }
-      };
-      pollRef.current = window.setTimeout(poll, d.interval * 1000);
-    } catch (e) {
-      setError(String(e));
-    }
-  };
-
-  const logout = async (which: "all" | "web" | "app") => {
-    await api.authLogout(which);
+  const logout = async () => {
+    await api.authLogout();
     onAuthChanged();
   };
 
@@ -310,32 +271,27 @@ export function SettingsDialog({ auth, initialTab, onClose, onAuthChanged }: Pro
         {tab === "account" && (
           <section>
             {auth?.logged_in ? (
-              <div className="row">
-                {t("Angemeldet als")} <b>{auth.login}</b>
-                <div className="spacer" />
-                <button onClick={() => logout("all")}>{t("Abmelden")}</button>
+              <div className="account-row">
+                <div>
+                  {t("Angemeldet als")} <b>{auth.login}</b>
+                  <div className="muted small">{t("Aktiv – gefolgte Kanäle, Chat, Kanalpunkte und Turbo/Abos ohne Werbung.")}</div>
+                </div>
+                <button onClick={logout}>{t("Abmelden")}</button>
               </div>
             ) : (
-              <p className="muted">{t("Ohne Login kannst du Streams schauen und den Chat lesen.")}</p>
-            )}
-
-            <div className="account-row">
-              <div>
-                <b>{t("twitch.tv-Login")}</b>
-                <div className="muted small">
-                  {auth?.web
-                    ? t("Aktiv – gefolgte Kanäle, Chat, Kanalpunkte und Turbo/Abos ohne Werbung.")
-                    : t("Normale Twitch-Anmeldung im eigenen Fenster. Mehr ist nicht nötig – gefolgte Kanäle, Chat, Kanalpunkte und Turbo/Abo ohne Werbung funktionieren damit.")}
+              <div className="account-row">
+                <div>
+                  <b>{t("twitch.tv-Login")}</b>
+                  <div className="muted small">
+                    {t("Ohne Login kannst du Streams schauen und den Chat lesen.")}{" "}
+                    {t("Mit der normalen Twitch-Anmeldung kommen gefolgte Kanäle, Chat schreiben, Kanalpunkte und Turbo/Abo ohne Werbung dazu.")}
+                  </div>
                 </div>
-              </div>
-              {auth?.web ? (
-                <button onClick={() => logout("web")}>{t("Trennen")}</button>
-              ) : (
                 <button className="primary" onClick={webLogin}>
                   {t("Mit Twitch anmelden")}
                 </button>
-              )}
-            </div>
+              </div>
+            )}
 
             <h3 style={{ marginTop: 18 }}>{t("Kanalpunkte")}</h3>
             <Check
@@ -344,50 +300,6 @@ export function SettingsDialog({ auth, initialTab, onClose, onAuthChanged }: Pro
               checked={s.autoClaimPoints}
               onChange={(v) => updateSettings({ autoClaimPoints: v })}
             />
-
-            <button className="link" onClick={() => setShowAdvanced((v) => !v)}>
-              {showAdvanced ? "▾" : "▸"} {t("Erweitert: eigene Twitch-App (optional)")}
-            </button>
-
-            {showAdvanced &&
-              (auth?.app ? (
-                <div className="account-row">
-                  <div>
-                    <b>{t("Eigene App verbunden")}</b>
-                    <div className="muted small">{t("Wird für Chat und gefolgte Kanäle bevorzugt.")}</div>
-                  </div>
-                  <button onClick={() => logout("app")}>{t("Trennen")}</button>
-                </div>
-              ) : (
-                <>
-                  <p className="muted">
-                    {t("Normalerweise nicht nötig. Nur fürs Flüstern oder falls etwas mit dem twitch.tv-Login nicht klappt: Erstelle auf")}{" "}
-                    <a
-                      href="#"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        openUrl("https://dev.twitch.tv/console/apps/create");
-                      }}
-                    >
-                      dev.twitch.tv
-                    </a>{" "}
-                    {t("eine App mit Client-Typ")} <b>{t("„Öffentlich“")}</b> (OAuth-Redirect: <code>http://localhost</code>){" "}
-                    {t("und trage die Client-ID hier ein.")}
-                  </p>
-                  <div className="row">
-                    <input value={clientId} onChange={(e) => setClientId(e.target.value)} placeholder="Client-ID" spellCheck={false} />
-                    <button disabled={!clientId.trim() || !!device} onClick={startLogin}>
-                      {t("Verbinden")}
-                    </button>
-                  </div>
-                  {device && (
-                    <div className="device">
-                      {t("Im Browser bestätigen. Code:")} <span className="code">{device.user_code}</span>
-                      <button onClick={() => openUrl(device.verification_uri)}>{t("Seite erneut öffnen")}</button>
-                    </div>
-                  )}
-                </>
-              ))}
             {error && <div className="error">{error}</div>}
           </section>
         )}

@@ -49,7 +49,7 @@ On **Fedora** install it once with `sudo dnf install gstreamer1-plugin-openh264`
 - Emotes from **7TV** (incl. zero-width, live updates, name paints and badges), **BTTV** and **FFZ**
 - Emote picker, tab completion, mention sound, highlight words
 - Slow down / delay chat, font and size, timestamps and more
-- Recent chat history when opening a channel, user cards with older messages, whisper and mention
+- Recent chat history when opening a channel, user cards with older messages and mention
 - **Reply** to messages (hover a message → reply button, Esc cancels)
 
 **More**
@@ -69,9 +69,8 @@ The token is stored **locally only**: `%APPDATA%\dev.nativ.twitchclient\auth.jso
 **Channel points, drops & follows:** Twitch may only allow claiming bonus chests, rewards and drops (and sometimes following) through its own website (“integrity check”).
 In that case the app opens the matching Twitch page in your browser.
 
-**Optional: your own Twitch app** (Settings → Account → Advanced) – not needed for followed channels, chat or emotes; only for whispers.
-1. Create an app at <https://dev.twitch.tv/console/apps/create> (OAuth redirect `http://localhost`, client type **Public**)
-2. Enter the client ID in MuffinTwitch → **Connect** → confirm the code in your browser
+No developer account or own Twitch app is needed – everything runs through the regular login.
+Whispers are not supported, because Twitch only allows them on its own website.
 
 ### Build it yourself
 
@@ -94,7 +93,8 @@ Output:
 | --- | --- |
 | `src-tauri/src/stream.rs` | Fetch playback token, build HLS playlist URL |
 | `src-tauri/src/proxy.rs` | `twproxy://` – routes HLS requests around CORS |
-| `src-tauri/src/auth.rs` | twitch.tv login, device-code login, Helix API |
+| `src-tauri/src/auth.rs` | twitch.tv login |
+| `src-tauri/src/webapi.rs` | Data queries like the Twitch website (followed, search, categories, badges …) |
 | `src-tauri/src/points.rs`, `drops.rs`, `follow.rs` | Channel points, drops, follow |
 | `src/lib/player.ts` | hls.js setup |
 | `src/lib/irc.ts`, `src/lib/chat.ts` | IRC client, chat store, history |
@@ -156,7 +156,7 @@ Unter **Fedora** einmalig `sudo dnf install gstreamer1-plugin-openh264` ausführ
 - Emotes von **7TV** (inkl. Zero-Width, Live-Updates, Namensfarben/Paints und Badges), **BTTV** und **FFZ**
 - Emote-Auswahl, Tab-Vervollständigung, Erwähnungen mit Ton, Highlight-Wörter
 - Chat verlangsamen/verzögern, Schriftart/-größe, Zeitstempel u. v. m.
-- Chatverlauf beim Öffnen, Nutzerkarte mit älteren Nachrichten, Flüstern und Erwähnen
+- Chatverlauf beim Öffnen, Nutzerkarte mit älteren Nachrichten und Erwähnen
 - Auf Nachrichten **antworten** (Maus über die Nachricht → Antworten-Knopf, Esc bricht ab)
 
 **Sonstiges**
@@ -176,9 +176,8 @@ Das Token wird **nur lokal** gespeichert: `%APPDATA%\dev.nativ.twitchclient\auth
 **Kanalpunkte, Drops & Folgen:** Twitch erlaubt das Einsammeln von Bonus-Truhen, Belohnungen und Drops (und teils das Folgen) nur über die eigene Webseite („integrity check“).
 Die App öffnet dann die passende Twitch-Seite in deinem Browser.
 
-**Optional: eigene Twitch-App** (Einstellungen → Konto → Erweitert) – für gefolgte Kanäle, Chat und Emotes nicht nötig, nur fürs Flüstern.
-1. Auf <https://dev.twitch.tv/console/apps/create> eine App anlegen (OAuth-Redirect `http://localhost`, Client-Typ **Öffentlich**)
-2. Client-ID in MuffinTwitch eintragen → **Verbinden** → Code im Browser bestätigen
+Ein Entwickler-Konto oder eine eigene Twitch-App ist nicht nötig – alles läuft über den normalen Login.
+Flüstern gibt es nicht, weil Twitch das nur auf der eigenen Webseite zulässt.
 
 ### Selbst bauen
 
@@ -201,7 +200,8 @@ Ergebnis:
 | --- | --- |
 | `src-tauri/src/stream.rs` | Playback-Token holen, HLS-Playlist-URL bauen |
 | `src-tauri/src/proxy.rs` | `twproxy://` – leitet HLS-Anfragen um CORS herum |
-| `src-tauri/src/auth.rs` | twitch.tv-Login, Device-Code-Login, Helix-API |
+| `src-tauri/src/auth.rs` | twitch.tv-Login |
+| `src-tauri/src/webapi.rs` | Datenabfragen wie die Twitch-Webseite (gefolgt, Suche, Kategorien, Abzeichen …) |
 | `src-tauri/src/points.rs`, `drops.rs`, `follow.rs` | Kanalpunkte, Drops, Folgen |
 | `src/lib/player.ts` | hls.js-Setup |
 | `src/lib/irc.ts`, `src/lib/chat.ts` | IRC-Client, Chat-Store, Verlauf |

@@ -56,7 +56,7 @@ export function UserMenu({ auth, me, onLogin, onLogout, onSettings }: Props) {
             {me?.profile_image_url && <img src={me.profile_image_url} alt="" />}
             <div>
               <b>{name}</b>
-              <div className="muted small">{auth.web ? t("Turbo/Abo-Vorteile aktiv") : t("Angemeldet")}</div>
+              <div className="muted small">{t("Turbo/Abo-Vorteile aktiv")}</div>
             </div>
           </div>
           <button

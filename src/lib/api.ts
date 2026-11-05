@@ -1,22 +1,9 @@
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 
 export interface AuthInfo {
-  client_id: string;
   logged_in: boolean;
   login: string | null;
   user_id: string | null;
-  /** twitch.tv-Login aktiv → Turbo/Abo ohne Werbung */
-  web: boolean;
-  /** eigene App (Device Code) verbunden */
-  app: boolean;
-}
-
-export interface DeviceCode {
-  device_code: string;
-  user_code: string;
-  verification_uri: string;
-  expires_in: number;
-  interval: number;
 }
 
 export interface HelixStream {
@@ -41,16 +28,12 @@ export interface HelixUser {
 export const api = {
   getStreamUrl: (login: string) => invoke<string>("get_stream_url", { login }),
   authGet: () => invoke<AuthInfo>("auth_get"),
-  authSetClientId: (clientId: string) => invoke<void>("auth_set_client_id", { clientId }),
-  authStart: () => invoke<DeviceCode>("auth_start"),
-  authPoll: (deviceCode: string) => invoke<"pending" | "ok">("auth_poll", { deviceCode }),
   authWebLogin: () => invoke<void>("auth_web_login"),
-  authLogout: (which: "all" | "web" | "app" = "all") => invoke<void>("auth_logout", { which }),
+  authLogout: () => invoke<void>("auth_logout"),
   chatCredentials: () => invoke<{ login: string; token: string } | null>("auth_chat_credentials"),
-  helix: <T = any>(path: string, query: [string, string][] = []) =>
-    invoke<T>("helix", { path, query }),
-  helixPost: <T = any>(path: string, query: [string, string][], body: unknown) =>
-    invoke<T>("helix_post", { path, query, body }),
+  /** Lese-Abfrage an Twitch (wie die Webseite), mit Login falls vorhanden. */
+  gql: <T = any>(query: string, variables: Record<string, unknown> = {}) =>
+    invoke<T>("twitch_gql", { query, variables }),
   logError: (message: string) => invoke<void>("log_error", { message }),
 };
 
@@ -85,114 +68,171 @@ export function proxify(url: string): string {
   return convertFileSrc(url, "twproxy");
 }
 
-/**
- * Eigene Twitch-App verbunden? Nur dann hat das Token die Helix-Rechte für
- * gefolgte Kanäle/Emotes. Sonst lädt die App diese Daten wie die Twitch-Webseite.
- */
-let appLogin = false;
-export function setAppLogin(v: boolean) {
-  appLogin = v;
-}
-
 export interface FollowedStream extends HelixStream {
   profile_image_url?: string;
 }
 
-export const helixApi = {
+// ---------- Umwandlung der Twitch-Antworten in die gewohnten Formen ----------
+
+const USER_FIELDS = "id login displayName profileImageURL(width: 70)";
+const STREAM_FIELDS = "id title viewersCount createdAt game { id name }";
+
+/** "…/18122-52x72.jpg" → "…/18122-{width}x{height}.jpg" */
+function sizeTemplate(url: string | null | undefined): string {
+  return (url ?? "").replace(/-\d+x\d+(\.\w+)$/, "-{width}x{height}$1");
+}
+
+function previewTemplate(login: string) {
+  return `https://static-cdn.jtvnw.net/previews-ttv/live_user_${login}-{width}x{height}.jpg`;
+}
+
+function toUser(u: any): HelixUser {
+  return { id: u.id, login: u.login, display_name: u.displayName ?? u.login, profile_image_url: u.profileImageURL ?? "" };
+}
+
+function toStream(u: any, st: any): HelixStream {
+  return {
+    id: st.id,
+    user_id: u.id,
+    user_login: u.login,
+    user_name: u.displayName ?? u.login,
+    game_name: st.game?.name ?? "",
+    title: st.title ?? "",
+    viewer_count: st.viewersCount ?? 0,
+    started_at: st.createdAt ?? "",
+    thumbnail_url: previewTemplate(u.login),
+  };
+}
+
+function toGame(g: any): HelixGame {
+  return { id: g.id, name: g.name ?? g.displayName, box_art_url: sizeTemplate(g.boxArtURL) };
+}
+
+function chunks<T>(list: T[], size = 100): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < list.length; i += size) out.push(list.slice(i, i + size));
+  return out;
+}
+
+export const twitchApi = {
+  /** Live-Streams dieser Kanäle (offline Kanäle fehlen im Ergebnis). */
   async streamsByLogin(logins: string[]): Promise<HelixStream[]> {
-    if (!logins.length) return [];
     const out: HelixStream[] = [];
-    for (let i = 0; i < logins.length; i += 100) {
-      const q: [string, string][] = logins.slice(i, i + 100).map((l) => ["user_login", l]);
-      q.push(["first", "100"]);
-      const r = await api.helix<{ data: HelixStream[] }>("streams", q);
-      out.push(...r.data);
+    for (const part of chunks(logins)) {
+      const r = await api.gql<{ users: any[] }>(
+        `query NativStreams($logins: [String!]) { users(logins: $logins) { ${USER_FIELDS} stream { ${STREAM_FIELDS} } } }`,
+        { logins: part },
+      );
+      for (const u of r.users ?? []) if (u?.stream) out.push(toStream(u, u.stream));
     }
     return out;
   },
   /** Folgt der Nutzer diesem Kanal? */
-  async isFollowing(userId: string, broadcasterId: string): Promise<boolean> {
-    if (!appLogin) return invoke<boolean>("is_following_web", { channelId: broadcasterId });
-    const r = await api.helix<{ data: unknown[] }>("channels/followed", [
-      ["user_id", userId],
-      ["broadcaster_id", broadcasterId],
-    ]);
-    return r.data.length > 0;
+  async isFollowing(_userId: string, broadcasterId: string): Promise<boolean> {
+    return invoke<boolean>("is_following_web", { channelId: broadcasterId });
   },
-  async followedStreams(userId: string): Promise<FollowedStream[]> {
-    if (!appLogin) return invoke<FollowedStream[]>("followed_live_web");
-    const r = await api.helix<{ data: HelixStream[] }>("streams/followed", [
-      ["user_id", userId],
-      ["first", "100"],
-    ]);
-    return r.data;
+  async followedStreams(_userId: string): Promise<FollowedStream[]> {
+    return invoke<FollowedStream[]>("followed_live_web");
   },
   /** Eigene Twitch-Emotes (Abos usw.) */
-  async userEmotes(userId: string): Promise<{ id: string; name: string }[]> {
-    if (!appLogin) return invoke<{ id: string; name: string }[]>("user_emotes_web");
-    const out: { id: string; name: string }[] = [];
-    let after: string | undefined;
-    for (let page = 0; page < 10; page++) {
-      const q: [string, string][] = [["user_id", userId]];
-      if (after) q.push(["after", after]);
-      const r = await api.helix<{ data: { id: string; name: string }[]; pagination?: { cursor?: string } }>("chat/emotes/user", q);
-      for (const e of r.data) out.push({ id: e.id, name: e.name });
-      after = r.pagination?.cursor;
-      if (!after) break;
-    }
-    return out;
+  async userEmotes(_userId: string): Promise<{ id: string; name: string }[]> {
+    return invoke<{ id: string; name: string }[]>("user_emotes_web");
   },
   async usersById(ids: string[]): Promise<HelixUser[]> {
     const out: HelixUser[] = [];
-    for (let i = 0; i < ids.length; i += 100) {
-      const q: [string, string][] = ids.slice(i, i + 100).map((id) => ["id", id]);
-      const r = await api.helix<{ data: HelixUser[] }>("users", q);
-      out.push(...r.data);
+    for (const part of chunks(ids)) {
+      const r = await api.gql<{ users: any[] }>(`query NativUsersById($ids: [ID!]) { users(ids: $ids) { ${USER_FIELDS} } }`, {
+        ids: part,
+      });
+      for (const u of r.users ?? []) if (u) out.push(toUser(u));
     }
     return out;
-  },
-  async searchChannels(query: string, first = 8): Promise<HelixChannelSearch[]> {
-    const r = await api.helix<{ data: HelixChannelSearch[] }>("search/channels", [
-      ["query", query],
-      ["first", String(first)],
-    ]);
-    return r.data;
-  },
-  /** Geteilter Chat / Stream Together: Teilnehmer (Broadcaster-IDs) oder null */
-  async sharedChatParticipants(broadcasterId: string): Promise<string[] | null> {
-    const r = await api.helix<{ data: { participants: { broadcaster_id: string }[] }[] }>("shared_chat/session", [
-      ["broadcaster_id", broadcasterId],
-    ]);
-    const s = r.data?.[0];
-    return s ? s.participants.map((p) => p.broadcaster_id) : null;
-  },
-  async searchCategories(query: string, first = 5): Promise<HelixGame[]> {
-    const r = await api.helix<{ data: HelixGame[] }>("search/categories", [
-      ["query", query],
-      ["first", String(first)],
-    ]);
-    return r.data;
-  },
-  async topGames(first = 20): Promise<HelixGame[]> {
-    const r = await api.helix<{ data: HelixGame[] }>("games/top", [["first", String(first)]]);
-    return r.data;
-  },
-  async streamsByGame(gameId: string, language: string, first = 40): Promise<HelixStream[]> {
-    const q: [string, string][] = [
-      ["game_id", gameId],
-      ["first", String(first)],
-    ];
-    if (language) q.push(["language", language]);
-    const r = await api.helix<{ data: HelixStream[] }>("streams", q);
-    return r.data;
   },
   async usersByLogin(logins: string[]): Promise<HelixUser[]> {
     const out: HelixUser[] = [];
-    for (let i = 0; i < logins.length; i += 100) {
-      const q: [string, string][] = logins.slice(i, i + 100).map((l) => ["login", l]);
-      const r = await api.helix<{ data: HelixUser[] }>("users", q);
-      out.push(...r.data);
+    for (const part of chunks(logins)) {
+      const r = await api.gql<{ users: any[] }>(
+        `query NativUsersByLogin($logins: [String!]) { users(logins: $logins) { ${USER_FIELDS} } }`,
+        { logins: part },
+      );
+      for (const u of r.users ?? []) if (u) out.push(toUser(u));
     }
     return out;
+  },
+  /** Kanal- und Kategoriesuche in einer Anfrage (wie das Suchfeld auf twitch.tv). */
+  async search(query: string, channels = 8, categories = 5): Promise<{ channels: HelixChannelSearch[]; games: HelixGame[] }> {
+    const r = await api.gql<{ searchFor: any }>(
+      `query NativSearch($q: String!) { searchFor(userQuery: $q, platform: "web") {
+        channels { edges { item { ... on User { ${USER_FIELDS} stream { id } broadcastSettings { title game { name } } } } } }
+        games { edges { item { ... on Game { id name displayName boxArtURL(width: 52, height: 72) } } } }
+      } }`,
+      { q: query },
+    );
+    const ch: HelixChannelSearch[] = (r.searchFor?.channels?.edges ?? [])
+      .map((e: any) => e.item)
+      .filter((u: any) => u?.login)
+      .slice(0, channels)
+      .map((u: any) => ({
+        id: u.id,
+        broadcaster_login: u.login,
+        display_name: u.displayName ?? u.login,
+        thumbnail_url: u.profileImageURL ?? "",
+        is_live: !!u.stream,
+        game_name: u.broadcastSettings?.game?.name ?? "",
+        title: u.broadcastSettings?.title ?? "",
+      }));
+    const games: HelixGame[] = (r.searchFor?.games?.edges ?? [])
+      .map((e: any) => e.item)
+      .filter((g: any) => g?.id)
+      .slice(0, categories)
+      .map(toGame);
+    return { channels: ch, games };
+  },
+  async searchChannels(query: string, first = 8): Promise<HelixChannelSearch[]> {
+    return (await twitchApi.search(query, first, 0)).channels;
+  },
+  async searchCategories(query: string, first = 5): Promise<HelixGame[]> {
+    return (await twitchApi.search(query, 0, first)).games;
+  },
+  /** Geteilter Chat / Stream Together: Teilnehmer (Kanal-IDs) oder null */
+  async sharedChatParticipants(broadcasterId: string): Promise<string[] | null> {
+    const r = await api.gql<{ user: any }>(
+      `query NativSharedChat($id: ID!) { user(id: $id) { sharedChatSession { id participants { channel { id } } } } }`,
+      { id: broadcasterId },
+    );
+    const s = r.user?.sharedChatSession;
+    if (!s) return null;
+    const ids = (s.participants ?? []).map((p: any) => p?.channel?.id).filter(Boolean) as string[];
+    return ids.length ? ids : null;
+  },
+  async topGames(first = 20): Promise<HelixGame[]> {
+    const r = await api.gql<{ games: any }>(
+      `query NativTopGames($first: Int) { games(first: $first, options: { sort: VIEWER_COUNT }) { edges { node { id name displayName boxArtURL(width: 52, height: 72) } } } }`,
+      { first },
+    );
+    return (r.games?.edges ?? []).map((e: any) => toGame(e.node));
+  },
+  async streamsByGame(gameId: string, language: string, first = 40): Promise<HelixStream[]> {
+    const options = language ? { languages: [language] } : {};
+    const r = await api.gql<{ game: any }>(
+      `query NativGameStreams($id: ID!, $first: Int, $options: GameStreamOptions) { game(id: $id) { streams(first: $first, options: $options) { edges { node { ${STREAM_FIELDS} broadcaster { ${USER_FIELDS} } } } } } }`,
+      { id: gameId, first, options },
+    );
+    return (r.game?.streams?.edges ?? [])
+      .map((e: any) => e.node)
+      .filter((n: any) => n?.broadcaster)
+      .map((n: any) => toStream(n.broadcaster, n));
+  },
+  /** Chat-Abzeichen: global (ohne ID) oder eines Kanals */
+  async badges(channelId?: string): Promise<{ setID: string; version: string; title: string; imageURL: string }[]> {
+    if (!channelId) {
+      const r = await api.gql<{ badges: any[] }>(`query NativBadges { badges { setID version title imageURL(size: NORMAL) } }`);
+      return (r.badges ?? []).filter(Boolean);
+    }
+    const r = await api.gql<{ user: any }>(
+      `query NativChannelBadges($id: ID!) { user(id: $id) { broadcastBadges { setID version title imageURL(size: NORMAL) } } }`,
+      { id: channelId },
+    );
+    return (r.user?.broadcastBadges ?? []).filter(Boolean);
   },
 };

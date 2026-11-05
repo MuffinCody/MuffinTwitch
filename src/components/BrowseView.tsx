@@ -1,5 +1,5 @@
 import { useEffect, useState, type MouseEvent } from "react";
-import { boxArt, helixApi, thumb, type HelixGame, type HelixStream } from "../lib/api";
+import { boxArt, twitchApi, thumb, type HelixGame, type HelixStream } from "../lib/api";
 import { toggleFavGame, updateSettings, useSettings } from "../lib/settings";
 import { Icon } from "./Icon";
 import { useT } from "../lib/i18n";
@@ -44,8 +44,8 @@ export function BrowseView({ target, canAdd, onNavigate, onOpen, onClose }: Prop
     setLoading(true);
     setError(null);
     const load = target.kind === "categories"
-      ? helixApi.topGames(60).then((g) => !cancelled && setGames(g))
-      : helixApi.streamsByGame(target.game.id, settings.browseLanguage, 40).then((s) => !cancelled && setStreams(s));
+      ? twitchApi.topGames(60).then((g) => !cancelled && setGames(g))
+      : twitchApi.streamsByGame(target.game.id, settings.browseLanguage, 40).then((s) => !cancelled && setStreams(s));
     load
       .catch((e) => !cancelled && setError(String(e)))
       .finally(() => !cancelled && setLoading(false));

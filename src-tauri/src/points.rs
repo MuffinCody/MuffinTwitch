@@ -21,23 +21,21 @@ pub struct ChannelPoints {
 
 /// GQL-Anfrage mit dem twitch.tv-Login (Web-Token). Fehler werden in nativ.log protokolliert.
 pub(crate) async fn gql(state: &State<'_, AppState>, body: Value) -> Result<Value, String> {
-    let op = body["operationName"].as_str().unwrap_or("?").to_string();
-    let token = state
-        .auth
-        .lock()
-        .await
-        .web_token
-        .clone()
-        .ok_or("Dafür ist der twitch.tv-Login nötig")?;
-    let res = state
-        .http
-        .post(GQL_URL)
-        .header("Client-ID", WEB_CLIENT_ID)
-        .header("Authorization", format!("OAuth {token}"))
-        .json(&body)
-        .send()
-        .await
-        .map_err(|e| e.to_string())?;
+    let token = state.auth.lock().await.web_token.clone();
+    if token.is_none() {
+        return Err("Dafür ist der twitch.tv-Login nötig".into());
+    }
+    gql_send(state, body, token).await
+}
+
+/// GQL-Anfrage, mit Login-Token falls vorhanden (öffentliche Daten gehen auch ohne).
+pub(crate) async fn gql_send(state: &State<'_, AppState>, body: Value, token: Option<String>) -> Result<Value, String> {
+    let op = body["operationName"].as_str().or_else(|| body["query"].as_str().and_then(|q| q.split(['(', '{']).next())).unwrap_or("?").trim().to_string();
+    let mut req = state.http.post(GQL_URL).header("Client-ID", WEB_CLIENT_ID).json(&body);
+    if let Some(t) = token {
+        req = req.header("Authorization", format!("OAuth {t}"));
+    }
+    let res = req.send().await.map_err(|e| e.to_string())?;
     let status = res.status();
     let res: Value = res.json().await.map_err(|e| {
         crate::log_line(&format!("GQL {op}: HTTP {status}, keine JSON-Antwort ({e})"));

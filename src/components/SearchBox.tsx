@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
-import { boxArt, helixApi, type HelixChannelSearch, type HelixGame } from "../lib/api";
+import { boxArt, twitchApi, type HelixChannelSearch, type HelixGame } from "../lib/api";
 import { Icon } from "./Icon";
 import { useT } from "../lib/i18n";
 
@@ -35,10 +35,9 @@ export function SearchBox({ loggedIn, canAdd, multiMode, onOpen, onGame, normali
     }
     const id = ++reqId.current;
     const t = window.setTimeout(async () => {
-      const [c, g] = await Promise.all([
-        helixApi.searchChannels(q, 7).catch(() => [] as HelixChannelSearch[]),
-        helixApi.searchCategories(q, 4).catch(() => [] as HelixGame[]),
-      ]);
+      const { channels: c, games: g } = await twitchApi
+        .search(q, 7, 4)
+        .catch(() => ({ channels: [] as HelixChannelSearch[], games: [] as HelixGame[] }));
       if (id !== reqId.current) return;
       // Live-Kanäle zuerst
       setChannels([...c].sort((a, b) => Number(b.is_live) - Number(a.is_live)));

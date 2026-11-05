@@ -134,17 +134,13 @@ pub fn run() {
             webapi::followed_live_web,
             webapi::is_following_web,
             webapi::user_emotes_web,
+            webapi::twitch_gql,
             points::points_menu,
             points::redeem_reward,
             auth::auth_get,
             auth::auth_web_login,
-            auth::auth_set_client_id,
-            auth::auth_start,
-            auth::auth_poll,
             auth::auth_logout,
             auth::auth_chat_credentials,
-            auth::helix,
-            auth::helix_post,
         ])
         .run(tauri::generate_context!())
         .expect("Fehler beim Starten der Anwendung");

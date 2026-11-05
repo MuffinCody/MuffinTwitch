@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { listen } from "@tauri-apps/api/event";
-import { api, helixApi, setAppLogin, type AuthInfo, type HelixGame, type HelixStream, type HelixUser } from "./lib/api";
+import { api, twitchApi, type AuthInfo, type HelixGame, type HelixStream, type HelixUser } from "./lib/api";
 import { irc } from "./lib/irc";
 import { joinChannel, leaveChannel, startChat } from "./lib/chat";
 import { loadGlobalBadges, resetBadges } from "./lib/badges";
@@ -79,7 +79,6 @@ export default function App() {
   const loadAuth = useCallback(async () => {
     try {
       const a = await api.authGet();
-      setAppLogin(a.app);
       setAuth(a);
       irc.setCredentials(a.logged_in ? await api.chatCredentials() : null);
       resetBadges();
@@ -87,8 +86,8 @@ export default function App() {
       setSelfUser(a.logged_in ? a.user_id : null);
       if (a.logged_in) {
         loadGlobalBadges();
-        if (a.user_id) helixApi.usersById([a.user_id]).then((u) => setMe(u[0] ?? null)).catch(() => {});
-        helixApi.topGames(12).then(setGames).catch(() => {});
+        if (a.user_id) twitchApi.usersById([a.user_id]).then((u) => setMe(u[0] ?? null)).catch(() => {});
+        twitchApi.topGames(12).then(setGames).catch(() => {});
       } else {
         setMe(null);
         setFollowed([]);
@@ -116,7 +115,7 @@ export default function App() {
 
   const login = () => api.authWebLogin().catch(() => setShowSettings(true));
   const logout = async () => {
-    await api.authLogout("all");
+    await api.authLogout();
     loadAuth();
   };
 
@@ -153,8 +152,8 @@ export default function App() {
 
   // ---------- Kanalpunkte ----------
   useEffect(() => {
-    points.setChannels(channels, !!auth?.web);
-  }, [channels.join(","), auth?.web]); // eslint-disable-line react-hooks/exhaustive-deps
+    points.setChannels(channels, !!auth?.logged_in);
+  }, [channels.join(","), auth?.logged_in]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ---------- Gefolgte Live-Kanäle (eigener Takt + Aktualisieren-Knopf) ----------
   const followedRef = useRef<HelixStream[]>([]);
@@ -164,7 +163,7 @@ export default function App() {
     if (!auth?.logged_in || !auth.user_id) return;
     setFollowLoading(true);
     try {
-      const fol = await helixApi.followedStreams(auth.user_id);
+      const fol = await twitchApi.followedStreams(auth.user_id);
       followedRef.current = fol;
       setFollowed(fol);
       setFollowUpdated(Date.now());
@@ -179,7 +178,7 @@ export default function App() {
       }
       const need = fol.filter((f) => !f.profile_image_url).map((f) => f.user_login).filter((l) => !avatarsRef.current[l]);
       if (need.length) {
-        const users = await helixApi.usersByLogin(need);
+        const users = await twitchApi.usersByLogin(need);
         setAvatars((prev) => {
           const next = { ...prev };
           for (const u of users) next[u.login] = u;
@@ -195,7 +194,7 @@ export default function App() {
 
   // Folgen-Knopf: nur mit twitch.tv-Login (Twitch-Webseiten-Token)
   useEffect(() => {
-    setFollowUser(auth?.web && auth.user_id ? auth.user_id : null, refreshFollowed);
+    setFollowUser(auth?.logged_in && auth.user_id ? auth.user_id : null, refreshFollowed);
   }, [auth, refreshFollowed]);
 
   useEffect(() => {
@@ -213,7 +212,7 @@ export default function App() {
     try {
       const s = getSettings();
       const logins = [...new Set([...channels, ...s.favorites])];
-      const info = await helixApi.streamsByLogin(logins);
+      const info = await twitchApi.streamsByLogin(logins);
       const fol = followedRef.current;
       const map: Record<string, HelixStream> = {};
       for (const x of [...fol, ...info]) map[x.user_login] = x;
@@ -221,7 +220,7 @@ export default function App() {
 
       const need = logins.filter((l) => !avatars[l]);
       if (need.length) {
-        const users = await helixApi.usersByLogin(need);
+        const users = await twitchApi.usersByLogin(need);
         setAvatars((prev) => {
           const next = { ...prev };
           for (const u of users) next[u.login] = u;
@@ -232,12 +231,12 @@ export default function App() {
       // Stream Together / geteilter Chat für offene Live-Kanäle
       const live = channels.map((c) => map[c]).filter(Boolean) as HelixStream[];
       const sessions = await Promise.all(
-        live.map((st) => helixApi.sharedChatParticipants(st.user_id).catch(() => null)),
+        live.map((st) => twitchApi.sharedChatParticipants(st.user_id).catch(() => null)),
       );
       const ids = new Set<string>();
       sessions.forEach((p) => p?.forEach((id) => ids.add(id)));
       const missing = [...ids].filter((id) => !roomUsersRef.current[id]);
-      const users = missing.length ? await helixApi.usersById(missing).catch(() => [] as HelixUser[]) : [];
+      const users = missing.length ? await twitchApi.usersById(missing).catch(() => [] as HelixUser[]) : [];
       const byId = { ...roomUsersRef.current };
       for (const u of users) byId[u.id] = u;
       roomUsersRef.current = byId;
@@ -409,7 +408,7 @@ export default function App() {
         focused={layout === "focus" && (focused ?? channels[0]) === login && multi}
         info={streamInfo[login]}
         isFavorite={settings.favorites.includes(login)}
-        authKey={auth?.web ? `web:${auth.login}` : "anon"}
+        authKey={auth?.logged_in ? `web:${auth.login}` : "anon"}
         together={together[login]}
         channelId={streamInfo[login]?.user_id ?? avatars[login]?.id}
         onOpenPartner={(l) => openChannel(l, true)}
@@ -503,7 +502,7 @@ export default function App() {
             </button>
           </div>
         )}
-        {auth?.web && <DropsButton />}
+        {auth?.logged_in && <DropsButton />}
         <UserMenu auth={auth} me={me} onLogin={login} onLogout={logout} onSettings={() => openSettings()} />
       </header>}
 

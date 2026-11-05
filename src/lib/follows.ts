@@ -1,7 +1,7 @@
 import { useEffect, useSyncExternalStore } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { helixApi } from "./api";
+import { twitchApi } from "./api";
 import { isIntegrityError } from "./points";
 
 /** Folge-Status pro Kanal-ID (undefined = noch unbekannt) */
@@ -31,7 +31,7 @@ async function load(broadcasterId: string) {
   if (!myId || status.has(broadcasterId) || busy.has(broadcasterId)) return;
   busy.add(broadcasterId);
   try {
-    status.set(broadcasterId, await helixApi.isFollowing(myId, broadcasterId));
+    status.set(broadcasterId, await twitchApi.isFollowing(myId, broadcasterId));
   } catch {
     /* unbekannt lassen */
   } finally {

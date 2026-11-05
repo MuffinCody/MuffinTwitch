@@ -63,17 +63,11 @@ export const playerChat: Record<string, string> = {
   "Jemand": "Someone",
 
   // Nutzerkarte
-  "Gesendet.": "Sent.",
-  "Twitch erlaubt Flüstern nur mit verifizierter Telefonnummer und passender Berechtigung (ggf. unter Einstellungen → Erweitert die eigene App neu verbinden).":
-    "Twitch only allows whispers with a verified phone number and the right permission (you may need to reconnect your own app under Settings → Advanced).",
   "Konto seit {date}": "Account since {date}",
   "Kanal öffnen": "Open channel",
   "Profil auf twitch.tv öffnen": "Open profile on twitch.tv",
   "Erwähnen": "Mention",
-  "Flüstern": "Whisper",
   "Kanal": "Channel",
-  "Flüsternachricht an {name}…": "Whisper to {name}…",
-  "Senden": "Send",
   "Nachrichten": "Messages",
   "Keine Nachrichten gefunden.": "No messages found.",
   "Lade ältere Nachrichten…": "Loading older messages…",

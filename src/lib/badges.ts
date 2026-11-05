@@ -1,4 +1,4 @@
-import { api } from "./api";
+import { twitchApi } from "./api";
 
 export interface Badge {
   title: string;
@@ -12,36 +12,34 @@ const globalBadges: BadgeMap = new Map();
 const channelBadges = new Map<string, BadgeMap>(); // roomId -> map
 let globalLoaded = false;
 
-function toMap(data: any[], into: BadgeMap) {
-  for (const set of data ?? []) {
-    for (const v of set.versions ?? []) {
-      into.set(`${set.set_id}/${v.id}`, {
-        title: v.title || set.set_id,
-        url: v.image_url_1x,
-        srcset: `${v.image_url_1x} 1x, ${v.image_url_2x} 2x, ${v.image_url_4x} 4x`,
-      });
-    }
+function toMap(list: { setID: string; version: string; title: string; imageURL: string }[], into: BadgeMap) {
+  for (const b of list) {
+    if (!b.imageURL) continue;
+    // ".../badges/v1/<id>/1" → Größen 1, 2, 3
+    const base = b.imageURL.replace(/\/\d+$/, "");
+    into.set(`${b.setID}/${b.version}`, {
+      title: b.title || b.setID,
+      url: `${base}/1`,
+      srcset: `${base}/1 1x, ${base}/2 2x, ${base}/3 4x`,
+    });
   }
 }
 
-/** Badges brauchen die Helix-API → nur mit Login verfügbar. */
 export async function loadGlobalBadges() {
   if (globalLoaded) return;
   try {
-    const r = await api.helix<{ data: any[] }>("chat/badges/global");
-    toMap(r.data, globalBadges);
+    toMap(await twitchApi.badges(), globalBadges);
     globalLoaded = true;
   } catch {
-    /* nicht angemeldet */
+    /* später erneut */
   }
 }
 
 export async function loadChannelBadges(roomId: string) {
   if (channelBadges.has(roomId)) return;
   try {
-    const r = await api.helix<{ data: any[] }>("chat/badges", [["broadcaster_id", roomId]]);
     const m: BadgeMap = new Map();
-    toMap(r.data, m);
+    toMap(await twitchApi.badges(roomId), m);
     channelBadges.set(roomId, m);
   } catch {
     /* ignore */

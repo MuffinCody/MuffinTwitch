@@ -1,9 +1,8 @@
-//! Daten, die die Twitch-Webseite mit dem normalen twitch.tv-Login lädt.
-//! Damit braucht niemand eine eigene Twitch-App für gefolgte Kanäle, den
-//! Folgen-Status oder die eigenen Emotes (Helix verlangt dafür Extra-Rechte,
-//! die das Webseiten-Token nicht hat).
+//! Alle Datenabfragen laufen wie auf der Twitch-Webseite (GQL), mit dem normalen
+//! twitch.tv-Login. Die offizielle Helix-API nimmt dieses Token nicht an, deshalb
+//! braucht niemand eine eigene Twitch-App.
 
-use crate::points::gql;
+use crate::points::{gql, gql_send};
 use crate::AppState;
 use serde::Serialize;
 use serde_json::{json, Value};
@@ -26,6 +25,23 @@ pub struct WebStream {
     started_at: String,
     thumbnail_url: String,
     profile_image_url: String,
+}
+
+/// Lese-Abfrage für die Oberfläche (Streams, Nutzer, Suche, Kategorien, Abzeichen …).
+/// Nutzt den Login, falls vorhanden; Änderungen (mutations) sind hier nicht erlaubt.
+#[tauri::command]
+pub async fn twitch_gql(state: State<'_, AppState>, query: String, variables: Option<Value>) -> Result<Value, String> {
+    if !query.trim_start().starts_with("query") {
+        return Err("Nur Abfragen erlaubt".into());
+    }
+    let token = state.auth.lock().await.web_token.clone();
+    let res = gql_send(
+        &state,
+        json!({ "query": query, "variables": variables.unwrap_or(json!({})) }),
+        token,
+    )
+    .await?;
+    Ok(res["data"].clone())
 }
 
 fn s(v: &Value) -> String {
