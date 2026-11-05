@@ -1,0 +1,22 @@
+# Arch-Linux-Paket aus dem fertigen .deb des Releases (wird von GitHub Actions gebaut).
+# Selbst bauen: .deb aus dem Release in diesen Ordner legen, dann `makepkg -si`.
+pkgname=muffintwitch
+pkgver=0.3.0
+pkgrel=1
+pkgdesc="Native Twitch client with multiview and chat with 7TV/BTTV/FFZ emotes"
+arch=('x86_64')
+url="https://github.com/MuffinCody/MuffinTwitch"
+license=('unknown')
+depends=('webkit2gtk-4.1' 'gtk3' 'gst-plugins-base' 'gst-plugins-good' 'gst-libav')
+options=('!strip' '!debug')
+source=("MuffinTwitch_${pkgver}_amd64.deb")
+sha256sums=('SKIP')
+noextract=("MuffinTwitch_${pkgver}_amd64.deb")
+
+package() {
+  cd "$srcdir"
+  bsdtar -xf "MuffinTwitch_${pkgver}_amd64.deb"
+  bsdtar -xf data.tar.* -C "$pkgdir"
+  # Verzeichnisrechte wie unter Arch üblich
+  find "$pkgdir" -type d -exec chmod 755 {} +
+}

@@ -79,6 +79,14 @@ pub fn run() {
         log_line(&format!("PANIC: {info}"));
     }));
 
+    // Linux + NVIDIA-Treiber: WebKitGTK zeigt mit dem DMA-BUF-Renderer oft nur ein leeres Fenster
+    #[cfg(target_os = "linux")]
+    if std::env::var_os("WEBKIT_DISABLE_DMABUF_RENDERER").is_none()
+        && std::path::Path::new("/proc/driver/nvidia").exists()
+    {
+        std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
+    }
+
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {

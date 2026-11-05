@@ -37,6 +37,21 @@
     ],
     "publisher": "MuffinCody",
     "shortDescription": "Nativer Twitch-Client mit Multiview und Chat",
+    "longDescription": "Native Twitch client with multiview, chat with 7TV/BTTV/FFZ emotes, channel points and drops.",
+    "category": "Video",
+    "homepage": "https://github.com/MuffinCody/MuffinTwitch",
+    "linux": {
+      "deb": {
+        "depends": ["gstreamer1.0-plugins-base", "gstreamer1.0-plugins-good", "gstreamer1.0-libav"]
+      },
+      "rpm": {
+        "depends": ["gstreamer1-plugins-base", "gstreamer1-plugins-good"],
+        "recommends": ["gstreamer1-plugin-libav", "gstreamer1-plugin-openh264"]
+      },
+      "appimage": {
+        "bundleMediaFramework": true
+      }
+    },
     "windows": {
       "webviewInstallMode": { "type": "embedBootstrapper" },
       "nsis": {

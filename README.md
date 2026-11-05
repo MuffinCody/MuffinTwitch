@@ -9,7 +9,7 @@
 
 ## English
 
-A lightweight, native Twitch client for Windows – with **multiview**, **chat incl. 7TV/BTTV/FFZ** and lots of quality-of-life features.
+A lightweight, native Twitch client for Windows and Linux – with **multiview**, **chat incl. 7TV/BTTV/FFZ** and lots of quality-of-life features.
 Built with [Tauri 2](https://tauri.app) (Rust) and React. The app is only ~8 MB and uses the WebView2 runtime built into Windows.
 The interface is available in **English and German** (Settings → General → Language).
 
@@ -18,6 +18,18 @@ The interface is available in **English and German** (Settings → General → L
 Get the installer from **[Releases](../../releases/latest)**: download `MuffinTwitch_x.y.z_x64-setup.exe` and run it.
 Everything the app needs is included – **Node.js is not required**. If WebView2 is missing (rare, it ships with Windows 11), the installer sets it up automatically.
 Windows SmartScreen may warn because the file is not code-signed (“More info” → “Run anyway”).
+
+**Linux** – packages are on the same release page:
+
+| Distribution | File | Install |
+| --- | --- | --- |
+| Ubuntu / Debian / Mint | `MuffinTwitch_x.y.z_amd64.deb` | `sudo apt install ./MuffinTwitch_*_amd64.deb` |
+| Fedora | `MuffinTwitch-x.y.z-1.x86_64.rpm` | `sudo dnf install ./MuffinTwitch-*.x86_64.rpm` |
+| Arch / Manjaro / EndeavourOS | `muffintwitch-x.y.z-1-x86_64.pkg.tar.zst` | `sudo pacman -U ./muffintwitch-*.pkg.tar.zst` |
+| Any distribution | `MuffinTwitch_x.y.z_amd64.AppImage` | `chmod +x MuffinTwitch_*.AppImage`, then run it |
+
+Video needs an H.264 decoder (GStreamer). The .deb and the Arch package install it automatically, the AppImage brings its own.
+On **Fedora** install it once with `sudo dnf install gstreamer1-plugin-openh264` (or `gstreamer1-plugin-libav` from RPM Fusion).
 
 ### Features
 
@@ -64,6 +76,7 @@ In that case the app opens the matching Twitch page in your browser.
 ### Build it yourself
 
 Requirements: [Node.js](https://nodejs.org) (LTS), [Rust](https://rustup.rs) (MSVC), WebView2 (preinstalled on Windows 11).
+On Linux additionally the Tauri system packages (see [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/#linux)), e.g. `libwebkit2gtk-4.1-dev` on Ubuntu.
 
 ```bash
 npm install
@@ -88,6 +101,7 @@ Output:
 | `src/lib/emotes.ts`, `src/lib/seventv.ts` | 7TV / BTTV / FFZ, 7TV EventAPI & paints |
 | `src/lib/i18n.ts`, `src/i18n/` | Translations (German is the source text, English dictionary) |
 | `src/components/` | UI (player, multiview, chat, menus) |
+| `.github/workflows/linux.yml`, `packaging/arch/` | Linux build (deb, rpm, AppImage, Arch package) |
 
 Crash/error log: `%APPDATA%\dev.nativ.twitchclient\nativ.log`
 
@@ -102,7 +116,7 @@ Chat history and older messages come from [recent-messages.robotty.de](https://r
 
 ## Deutsch
 
-Ein schlanker, nativer Twitch-Client für Windows – mit **Multiview**, **Chat inkl. 7TV/BTTV/FFZ** und vielen Komfortfunktionen.
+Ein schlanker, nativer Twitch-Client für Windows und Linux – mit **Multiview**, **Chat inkl. 7TV/BTTV/FFZ** und vielen Komfortfunktionen.
 Gebaut mit [Tauri 2](https://tauri.app) (Rust) und React. Die App ist nur ~8 MB groß und nutzt das in Windows eingebaute WebView2.
 Die Oberfläche gibt es auf **Deutsch und Englisch** (Einstellungen → Allgemein → Sprache).
 
@@ -111,6 +125,18 @@ Die Oberfläche gibt es auf **Deutsch und Englisch** (Einstellungen → Allgemei
 Den Installer gibt es unter **[Releases](../../releases/latest)**: `MuffinTwitch_x.y.z_x64-setup.exe` herunterladen und ausführen.
 Alles, was die App braucht, ist enthalten – **Node.js wird nicht benötigt**. Fehlt WebView2 (selten, bei Windows 11 vorinstalliert), richtet der Installer es automatisch ein.
 Windows SmartScreen warnt eventuell, weil die Datei nicht signiert ist („Weitere Informationen“ → „Trotzdem ausführen“).
+
+**Linux** – die Pakete liegen auf derselben Release-Seite:
+
+| Distribution | Datei | Installieren |
+| --- | --- | --- |
+| Ubuntu / Debian / Mint | `MuffinTwitch_x.y.z_amd64.deb` | `sudo apt install ./MuffinTwitch_*_amd64.deb` |
+| Fedora | `MuffinTwitch-x.y.z-1.x86_64.rpm` | `sudo dnf install ./MuffinTwitch-*.x86_64.rpm` |
+| Arch / Manjaro / EndeavourOS | `muffintwitch-x.y.z-1-x86_64.pkg.tar.zst` | `sudo pacman -U ./muffintwitch-*.pkg.tar.zst` |
+| Jede Distribution | `MuffinTwitch_x.y.z_amd64.AppImage` | `chmod +x MuffinTwitch_*.AppImage`, dann starten |
+
+Für Video wird ein H.264-Decoder (GStreamer) gebraucht. Das .deb- und das Arch-Paket installieren ihn automatisch, das AppImage bringt ihn mit.
+Unter **Fedora** einmalig `sudo dnf install gstreamer1-plugin-openh264` ausführen (oder `gstreamer1-plugin-libav` aus RPM Fusion).
 
 ### Funktionen
 
@@ -157,6 +183,7 @@ Die App öffnet dann die passende Twitch-Seite in deinem Browser.
 ### Selbst bauen
 
 Voraussetzungen: [Node.js](https://nodejs.org) (LTS), [Rust](https://rustup.rs) (MSVC), WebView2 (bei Windows 11 vorinstalliert).
+Unter Linux zusätzlich die Tauri-Systempakete (siehe [Tauri-Voraussetzungen](https://v2.tauri.app/start/prerequisites/#linux)), z. B. `libwebkit2gtk-4.1-dev` unter Ubuntu.
 
 ```bash
 npm install
@@ -181,6 +208,7 @@ Ergebnis:
 | `src/lib/emotes.ts`, `src/lib/seventv.ts` | 7TV / BTTV / FFZ, 7TV-EventAPI & Paints |
 | `src/lib/i18n.ts`, `src/i18n/` | Übersetzungen (Deutsch ist der Ausgangstext, englisches Wörterbuch) |
 | `src/components/` | Oberfläche (Player, Multiview, Chat, Menüs) |
+| `.github/workflows/linux.yml`, `packaging/arch/` | Linux-Build (deb, rpm, AppImage, Arch-Paket) |
 
 Absturz- und Fehlerprotokoll: `%APPDATA%\dev.nativ.twitchclient\nativ.log`
 

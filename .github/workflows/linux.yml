@@ -1,0 +1,111 @@
+# Baut MuffinTwitch für Linux und hängt die Pakete an das GitHub-Release:
+#   .deb (Ubuntu/Debian), .rpm (Fedora), .pkg.tar.zst (Arch), .AppImage (alle Distros)
+# Startet automatisch bei einem neuen Release oder per Hand (Actions → Linux → Run workflow).
+name: Linux
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release-Tag, z. B. v0.3.0"
+        required: true
+
+permissions:
+  contents: write
+
+env:
+  TAG: ${{ github.event.release.tag_name || inputs.tag }}
+
+jobs:
+  build:
+    # Ältere Ubuntu-Version → läuft auch auf älteren Distros (glibc)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Release: genau der Tag. Von Hand gestartet: aktueller Stand des Branches
+          ref: ${{ github.event.release.tag_name || github.sha }}
+
+      - name: Systempakete
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev patchelf libfuse2 file \
+            gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-libav
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - run: npm ci
+
+      - name: Bauen (deb, rpm, AppImage)
+        run: npx tauri build --bundles deb,rpm,appimage
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-packages
+          path: |
+            src-tauri/target/release/bundle/deb/*.deb
+            src-tauri/target/release/bundle/rpm/*.rpm
+            src-tauri/target/release/bundle/appimage/*.AppImage
+          if-no-files-found: error
+
+  arch:
+    needs: build
+    runs-on: ubuntu-latest
+    container: archlinux:latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Release: genau der Tag. Von Hand gestartet: aktueller Stand des Branches
+          ref: ${{ github.event.release.tag_name || github.sha }}
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: linux-packages
+          path: pkgs
+
+      - name: Arch-Paket bauen
+        run: |
+          pacman -Syu --noconfirm --needed base-devel
+          useradd -m builder
+          mkdir /build
+          cp packaging/arch/PKGBUILD /build/
+          cp pkgs/deb/*.deb /build/
+          ver="${TAG#v}"
+          sed -i "s/^pkgver=.*/pkgver=${ver}/" /build/PKGBUILD
+          chown -R builder /build
+          cd /build && su builder -c "makepkg -d --noconfirm"
+          mkdir -p "$GITHUB_WORKSPACE/out" && cp /build/*.pkg.tar.zst "$GITHUB_WORKSPACE/out/"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: arch-package
+          path: out/*.pkg.tar.zst
+          if-no-files-found: error
+
+  release:
+    needs: [build, arch]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: out
+          merge-multiple: true
+
+      - name: An das Release hängen
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          find out -type f \( -name '*.deb' -o -name '*.rpm' -o -name '*.AppImage' -o -name '*.pkg.tar.zst' \) -print0 \
+            | xargs -0 gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" --clobber
