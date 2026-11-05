@@ -85,6 +85,19 @@ export function proxify(url: string): string {
   return convertFileSrc(url, "twproxy");
 }
 
+/**
+ * Eigene Twitch-App verbunden? Nur dann hat das Token die Helix-Rechte für
+ * gefolgte Kanäle/Emotes. Sonst lädt die App diese Daten wie die Twitch-Webseite.
+ */
+let appLogin = false;
+export function setAppLogin(v: boolean) {
+  appLogin = v;
+}
+
+export interface FollowedStream extends HelixStream {
+  profile_image_url?: string;
+}
+
 export const helixApi = {
   async streamsByLogin(logins: string[]): Promise<HelixStream[]> {
     if (!logins.length) return [];
@@ -99,18 +112,35 @@ export const helixApi = {
   },
   /** Folgt der Nutzer diesem Kanal? */
   async isFollowing(userId: string, broadcasterId: string): Promise<boolean> {
+    if (!appLogin) return invoke<boolean>("is_following_web", { channelId: broadcasterId });
     const r = await api.helix<{ data: unknown[] }>("channels/followed", [
       ["user_id", userId],
       ["broadcaster_id", broadcasterId],
     ]);
     return r.data.length > 0;
   },
-  async followedStreams(userId: string): Promise<HelixStream[]> {
+  async followedStreams(userId: string): Promise<FollowedStream[]> {
+    if (!appLogin) return invoke<FollowedStream[]>("followed_live_web");
     const r = await api.helix<{ data: HelixStream[] }>("streams/followed", [
       ["user_id", userId],
       ["first", "100"],
     ]);
     return r.data;
+  },
+  /** Eigene Twitch-Emotes (Abos usw.) */
+  async userEmotes(userId: string): Promise<{ id: string; name: string }[]> {
+    if (!appLogin) return invoke<{ id: string; name: string }[]>("user_emotes_web");
+    const out: { id: string; name: string }[] = [];
+    let after: string | undefined;
+    for (let page = 0; page < 10; page++) {
+      const q: [string, string][] = [["user_id", userId]];
+      if (after) q.push(["after", after]);
+      const r = await api.helix<{ data: { id: string; name: string }[]; pagination?: { cursor?: string } }>("chat/emotes/user", q);
+      for (const e of r.data) out.push({ id: e.id, name: e.name });
+      after = r.pagination?.cursor;
+      if (!after) break;
+    }
+    return out;
   },
   async usersById(ids: string[]): Promise<HelixUser[]> {
     const out: HelixUser[] = [];

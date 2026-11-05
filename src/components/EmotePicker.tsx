@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { channelEmoteList, globalEmoteList, onEmotesChanged, twitchEmote, type Emote, type Provider } from "../lib/emotes";
-import { api } from "../lib/api";
+import { helixApi } from "../lib/api";
 import { useT } from "../lib/i18n";
 
 const RECENT_KEY = "nativ.recentEmotes";
@@ -26,19 +26,10 @@ export function rememberEmote(name: string) {
 // Eigene Twitch-Emotes (Subs etc.) – einmal pro Sitzung laden
 let twitchEmotesCache: Promise<Emote[]> | null = null;
 function loadTwitchEmotes(userId: string): Promise<Emote[]> {
-  twitchEmotesCache ??= (async () => {
-    const out: Emote[] = [];
-    let after: string | undefined;
-    for (let page = 0; page < 10; page++) {
-      const q: [string, string][] = [["user_id", userId]];
-      if (after) q.push(["after", after]);
-      const r = await api.helix<{ data: any[]; pagination?: { cursor?: string } }>("chat/emotes/user", q);
-      for (const e of r.data) out.push({ ...twitchEmote(e.id, e.name), id: e.id });
-      after = r.pagination?.cursor;
-      if (!after) break;
-    }
-    return out;
-  })().catch(() => {
+  twitchEmotesCache ??= helixApi
+    .userEmotes(userId)
+    .then((list) => list.map((e) => ({ ...twitchEmote(e.id, e.name), id: e.id })))
+    .catch(() => {
     twitchEmotesCache = null;
     return [];
   });

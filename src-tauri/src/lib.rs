@@ -4,6 +4,7 @@ mod follow;
 mod points;
 mod proxy;
 mod stream;
+mod webapi;
 
 use std::io::Write;
 use std::path::PathBuf;
@@ -130,6 +131,9 @@ pub fn run() {
             drops::drops_campaigns,
             drops::claim_drop,
             follow::follow_channel,
+            webapi::followed_live_web,
+            webapi::is_following_web,
+            webapi::user_emotes_web,
             points::points_menu,
             points::redeem_reward,
             auth::auth_get,

@@ -8,9 +8,9 @@ export const settings: Record<string, string> = {
   "Abmelden": "Log out",
   "Ohne Login kannst du Streams schauen und den Chat lesen.": "Without logging in you can watch streams and read chat.",
   "twitch.tv-Login": "twitch.tv login",
-  "Aktiv – Turbo/Abos (keine Werbung), Kanalpunkte und Chat.": "Active – Turbo/subs (no ads), channel points and chat.",
-  "Normale Twitch-Anmeldung im eigenen Fenster. Nötig für Turbo/Abo ohne Werbung und Kanalpunkte.":
-    "Regular Twitch login in its own window. Required for ad-free Turbo/subs and channel points.",
+  "Aktiv – gefolgte Kanäle, Chat, Kanalpunkte und Turbo/Abos ohne Werbung.": "Active – followed channels, chat, channel points and ad-free Turbo/subs.",
+  "Normale Twitch-Anmeldung im eigenen Fenster. Mehr ist nicht nötig – gefolgte Kanäle, Chat, Kanalpunkte und Turbo/Abo ohne Werbung funktionieren damit.":
+    "Regular Twitch login in its own window. That's all you need – followed channels, chat, channel points and ad-free Turbo/subs work with it.",
   "Trennen": "Disconnect",
   "Mit Twitch anmelden": "Log in with Twitch",
   "Gefolgte Kanäle": "Followed channels",
@@ -23,8 +23,8 @@ export const settings: Record<string, string> = {
   "Erweitert: eigene Twitch-App (optional)": "Advanced: your own Twitch app (optional)",
   "Eigene App verbunden": "Own app connected",
   "Wird für Chat und gefolgte Kanäle bevorzugt.": "Preferred for chat and followed channels.",
-  "Falls Chat oder gefolgte Kanäle mit dem twitch.tv-Login nicht klappen: Erstelle auf":
-    "If chat or followed channels don't work with the twitch.tv login: create",
+  "Normalerweise nicht nötig. Nur fürs Flüstern oder falls etwas mit dem twitch.tv-Login nicht klappt: Erstelle auf":
+    "Usually not needed. Only for whispers or if something doesn't work with the twitch.tv login: create",
   "eine App mit Client-Typ": "an app on that site with client type",
   "„Öffentlich“": "“Public”",
   "und trage die Client-ID hier ein.": "and enter its client ID here.",

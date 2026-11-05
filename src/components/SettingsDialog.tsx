@@ -324,8 +324,8 @@ export function SettingsDialog({ auth, initialTab, onClose, onAuthChanged }: Pro
                 <b>{t("twitch.tv-Login")}</b>
                 <div className="muted small">
                   {auth?.web
-                    ? t("Aktiv – Turbo/Abos (keine Werbung), Kanalpunkte und Chat.")
-                    : t("Normale Twitch-Anmeldung im eigenen Fenster. Nötig für Turbo/Abo ohne Werbung und Kanalpunkte.")}
+                    ? t("Aktiv – gefolgte Kanäle, Chat, Kanalpunkte und Turbo/Abos ohne Werbung.")
+                    : t("Normale Twitch-Anmeldung im eigenen Fenster. Mehr ist nicht nötig – gefolgte Kanäle, Chat, Kanalpunkte und Turbo/Abo ohne Werbung funktionieren damit.")}
                 </div>
               </div>
               {auth?.web ? (
@@ -361,7 +361,7 @@ export function SettingsDialog({ auth, initialTab, onClose, onAuthChanged }: Pro
               ) : (
                 <>
                   <p className="muted">
-                    {t("Falls Chat oder gefolgte Kanäle mit dem twitch.tv-Login nicht klappen: Erstelle auf")}{" "}
+                    {t("Normalerweise nicht nötig. Nur fürs Flüstern oder falls etwas mit dem twitch.tv-Login nicht klappt: Erstelle auf")}{" "}
                     <a
                       href="#"
                       onClick={(e) => {

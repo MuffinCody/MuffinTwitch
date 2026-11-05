@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { listen } from "@tauri-apps/api/event";
-import { api, helixApi, type AuthInfo, type HelixGame, type HelixStream, type HelixUser } from "./lib/api";
+import { api, helixApi, setAppLogin, type AuthInfo, type HelixGame, type HelixStream, type HelixUser } from "./lib/api";
 import { irc } from "./lib/irc";
 import { joinChannel, leaveChannel, startChat } from "./lib/chat";
 import { loadGlobalBadges, resetBadges } from "./lib/badges";
@@ -79,6 +79,7 @@ export default function App() {
   const loadAuth = useCallback(async () => {
     try {
       const a = await api.authGet();
+      setAppLogin(a.app);
       setAuth(a);
       irc.setCredentials(a.logged_in ? await api.chatCredentials() : null);
       resetBadges();
@@ -167,7 +168,16 @@ export default function App() {
       followedRef.current = fol;
       setFollowed(fol);
       setFollowUpdated(Date.now());
-      const need = fol.map((f) => f.user_login).filter((l) => !avatarsRef.current[l]);
+      const known = fol.filter((f) => f.profile_image_url && !avatarsRef.current[f.user_login]);
+      if (known.length) {
+        setAvatars((prev) => {
+          const next = { ...prev };
+          for (const f of known)
+            next[f.user_login] = { id: f.user_id, login: f.user_login, display_name: f.user_name, profile_image_url: f.profile_image_url! };
+          return next;
+        });
+      }
+      const need = fol.filter((f) => !f.profile_image_url).map((f) => f.user_login).filter((l) => !avatarsRef.current[l]);
       if (need.length) {
         const users = await helixApi.usersByLogin(need);
         setAvatars((prev) => {

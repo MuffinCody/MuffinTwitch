@@ -69,7 +69,7 @@ The token is stored **locally only**: `%APPDATA%\dev.nativ.twitchclient\auth.jso
 **Channel points, drops & follows:** Twitch may only allow claiming bonus chests, rewards and drops (and sometimes following) through its own website (“integrity check”).
 In that case the app opens the matching Twitch page in your browser.
 
-**Alternative: your own Twitch app** (Settings → Account → Advanced)
+**Optional: your own Twitch app** (Settings → Account → Advanced) – not needed for followed channels, chat or emotes; only for whispers.
 1. Create an app at <https://dev.twitch.tv/console/apps/create> (OAuth redirect `http://localhost`, client type **Public**)
 2. Enter the client ID in MuffinTwitch → **Connect** → confirm the code in your browser
 
@@ -176,7 +176,7 @@ Das Token wird **nur lokal** gespeichert: `%APPDATA%\dev.nativ.twitchclient\auth
 **Kanalpunkte, Drops & Folgen:** Twitch erlaubt das Einsammeln von Bonus-Truhen, Belohnungen und Drops (und teils das Folgen) nur über die eigene Webseite („integrity check“).
 Die App öffnet dann die passende Twitch-Seite in deinem Browser.
 
-**Alternative: eigene Twitch-App** (Einstellungen → Konto → Erweitert)
+**Optional: eigene Twitch-App** (Einstellungen → Konto → Erweitert) – für gefolgte Kanäle, Chat und Emotes nicht nötig, nur fürs Flüstern.
 1. Auf <https://dev.twitch.tv/console/apps/create> eine App anlegen (OAuth-Redirect `http://localhost`, Client-Typ **Öffentlich**)
 2. Client-ID in MuffinTwitch eintragen → **Verbinden** → Code im Browser bestätigen
 
