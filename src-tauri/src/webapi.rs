@@ -2,6 +2,7 @@
 //! twitch.tv-Login. Die offizielle Helix-API nimmt dieses Token nicht an, deshalb
 //! braucht niemand eine eigene Twitch-App.
 
+use crate::app_login::{app_user_id, helix};
 use crate::points::{gql, gql_send};
 use crate::AppState;
 use serde::Serialize;
@@ -49,13 +50,55 @@ fn s(v: &Value) -> String {
 }
 
 /// Gefolgte Kanäle, die gerade live sind (wie die Seitenleiste auf twitch.tv).
+/// Ausweichweg: offizielle API, wenn die eigene Twitch-App verbunden ist.
 #[tauri::command]
 pub async fn followed_live_web(state: State<'_, AppState>) -> Result<Vec<WebStream>, String> {
+    match followed_live_gql(&state).await {
+        Ok(v) => Ok(v),
+        Err(e) => match app_user_id(&state).await {
+            Some(uid) => followed_live_helix(&state, uid).await.map_err(|e2| format!("{e} / {e2}")),
+            None => Err(e),
+        },
+    }
+}
+
+async fn followed_live_helix(state: &State<'_, AppState>, uid: String) -> Result<Vec<WebStream>, String> {
+    let mut out = Vec::new();
+    let mut after: Option<String> = None;
+    for _ in 0..10 {
+        let mut q = vec![("user_id", uid.clone()), ("first", "100".to_string())];
+        if let Some(a) = &after {
+            q.push(("after", a.clone()));
+        }
+        let r = helix(state, reqwest::Method::GET, "streams/followed", &q, None).await?;
+        for st in r["data"].as_array().into_iter().flatten() {
+            out.push(WebStream {
+                id: s(&st["id"]),
+                user_id: s(&st["user_id"]),
+                user_login: s(&st["user_login"]),
+                user_name: s(&st["user_name"]),
+                game_name: s(&st["game_name"]),
+                title: s(&st["title"]),
+                viewer_count: st["viewer_count"].as_i64().unwrap_or(0),
+                started_at: s(&st["started_at"]),
+                thumbnail_url: s(&st["thumbnail_url"]),
+                profile_image_url: String::new(),
+            });
+        }
+        match r["pagination"]["cursor"].as_str() {
+            Some(c) if !c.is_empty() => after = Some(c.to_string()),
+            _ => break,
+        }
+    }
+    Ok(out)
+}
+
+async fn followed_live_gql(state: &State<'_, AppState>) -> Result<Vec<WebStream>, String> {
     let mut out = Vec::new();
     let mut after: Value = Value::Null;
     for _ in 0..10 {
         let res = gql(
-            &state,
+            state,
             json!({ "operationName": "NativFollowedLive", "query": FOLLOWED_LIVE_QUERY, "variables": { "after": after } }),
         )
         .await?;
@@ -98,8 +141,29 @@ pub async fn followed_live_web(state: State<'_, AppState>) -> Result<Vec<WebStre
 /// Folgt der angemeldete Nutzer diesem Kanal?
 #[tauri::command]
 pub async fn is_following_web(state: State<'_, AppState>, channel_id: String) -> Result<bool, String> {
+    match is_following_gql(&state, &channel_id).await {
+        Ok(v) => Ok(v),
+        Err(e) => match app_user_id(&state).await {
+            Some(uid) => {
+                let r = helix(
+                    &state,
+                    reqwest::Method::GET,
+                    "channels/followed",
+                    &[("user_id", uid), ("broadcaster_id", channel_id)],
+                    None,
+                )
+                .await
+                .map_err(|e2| format!("{e} / {e2}"))?;
+                Ok(r["data"].as_array().map(|a| !a.is_empty()).unwrap_or(false))
+            }
+            None => Err(e),
+        },
+    }
+}
+
+async fn is_following_gql(state: &State<'_, AppState>, channel_id: &str) -> Result<bool, String> {
     let res = gql(
-        &state,
+        state,
         json!({ "operationName": "NativIsFollowing", "query": IS_FOLLOWING_QUERY, "variables": { "id": channel_id } }),
     )
     .await?;
@@ -119,7 +183,37 @@ pub struct WebEmote {
 /// Eigene Twitch-Emotes (Abos, Turbo, Global …).
 #[tauri::command]
 pub async fn user_emotes_web(state: State<'_, AppState>) -> Result<Vec<WebEmote>, String> {
-    let res = gql(&state, json!({ "operationName": "NativUserEmotes", "query": USER_EMOTES_QUERY })).await?;
+    match user_emotes_gql(&state).await {
+        Ok(v) => Ok(v),
+        Err(e) => match app_user_id(&state).await {
+            Some(uid) => user_emotes_helix(&state, uid).await.map_err(|e2| format!("{e} / {e2}")),
+            None => Err(e),
+        },
+    }
+}
+
+async fn user_emotes_helix(state: &State<'_, AppState>, uid: String) -> Result<Vec<WebEmote>, String> {
+    let mut out = Vec::new();
+    let mut after: Option<String> = None;
+    for _ in 0..10 {
+        let mut q = vec![("user_id", uid.clone())];
+        if let Some(a) = &after {
+            q.push(("after", a.clone()));
+        }
+        let r = helix(state, reqwest::Method::GET, "chat/emotes/user", &q, None).await?;
+        for e in r["data"].as_array().into_iter().flatten() {
+            out.push(WebEmote { id: s(&e["id"]), name: s(&e["name"]) });
+        }
+        match r["pagination"]["cursor"].as_str() {
+            Some(c) if !c.is_empty() => after = Some(c.to_string()),
+            _ => break,
+        }
+    }
+    Ok(out)
+}
+
+async fn user_emotes_gql(state: &State<'_, AppState>) -> Result<Vec<WebEmote>, String> {
+    let res = gql(state, json!({ "operationName": "NativUserEmotes", "query": USER_EMOTES_QUERY })).await?;
     let mut out = Vec::new();
     let mut seen = std::collections::HashSet::new();
     for set in res["data"]["currentUser"]["emoteSets"].as_array().into_iter().flatten() {

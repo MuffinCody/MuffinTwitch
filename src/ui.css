@@ -480,3 +480,23 @@ button.brand:hover { background: var(--bg-4) !important; }
 .tile .pbtn.follow-btn.following { color: var(--accent-2); opacity: 1; }
 .tile .pbtn.follow-btn.confirm { color: #ff6b6b; opacity: 1; }
 .follow-confirm { font-size: 12px; font-weight: 700; }
+
+/* Einstellungen → Konto → eigene Twitch-App */
+.own-app { margin-top: 8px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; }
+.own-app-benefits { margin: 4px 0 10px; padding-left: 18px; line-height: 1.5; }
+.own-app-benefits li { margin-bottom: 4px; }
+.user-card-whisper .hint { padding: 8px 2px; }
+
+/* Multiview: Streams per Maus verschieben */
+.multiview.can-drag .tile-drag { cursor: grab; }
+.multiview.dragging, .multiview.dragging * { cursor: grabbing !important; user-select: none; }
+.multiview.dragging .tile .tile-top, .multiview.dragging .tile .tile-bottom { opacity: 0; }
+
+/* Abo-Jubiläum / Anschau-Serie teilen */
+.share-banner { margin: 6px 8px 0; padding: 10px; border: 1px solid var(--accent); border-radius: 8px; background: rgba(145, 71, 255, 0.12); display: flex; flex-direction: column; gap: 8px; }
+.share-head { display: flex; align-items: center; gap: 10px; }
+.share-icon { font-size: 22px; line-height: 1; }
+.share-banner input:not([type="checkbox"]) { width: 100%; box-sizing: border-box; }
+.share-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.share-actions button, .share-check { white-space: nowrap; }
+.share-check { display: flex; align-items: center; gap: 5px; font-size: 12px; cursor: pointer; }

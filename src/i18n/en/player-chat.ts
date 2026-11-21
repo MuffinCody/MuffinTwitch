@@ -139,4 +139,25 @@ export const playerChat: Record<string, string> = {
   "{name} entfolgt": "Unfollowed {name}",
   "Twitch erlaubt das nur auf der Webseite – im Browser geöffnet": "Twitch only allows this on its website – opened in your browser",
   "Folgen fehlgeschlagen": "Follow failed",
+
+  // Eigene Twitch-App
+  "Flüstern": "Whisper",
+  "Flüsternachricht an {name}…": "Whisper to {name}…",
+  "Senden": "Send",
+  "Gesendet.": "Sent.",
+  "Twitch erlaubt Flüstern nur mit verifizierter Telefonnummer.": "Twitch only allows whispers with a verified phone number.",
+  "Flüstern geht nur mit der eigenen Twitch-App. Verbinden unter Einstellungen → Konto → Erweitert.": "Whispers need your own Twitch app. Connect it under Settings → Account → Advanced.",
+
+  // Teilen (Abo-Jubiläum, Anschau-Serie) & Multiview
+  "Teile dein Abo-Jubiläum": "Share your resub",
+  "{n} Monate abonniert": "Subscribed for {n} months",
+  "{n} Monate am Stück": "{n}-month streak",
+  "Nachricht (optional)": "Message (optional)",
+  "Serie anzeigen": "Show streak",
+  "Nicht jetzt": "Not now",
+  "Im Chat teilen": "Share in chat",
+  "Teile deine Anschau-Serie": "Share your watch streak",
+  "Teile deinen Meilenstein": "Share your milestone",
+  "{n} Streams in Folge geschaut": "Watched {n} streams in a row",
+  "Ziehen, um den Stream zu verschieben": "Drag to move the stream",
 };

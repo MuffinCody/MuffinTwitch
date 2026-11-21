@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { twitchApi, type HelixUser } from "../lib/api";
+import { api, twitchApi, hasOwnApp, type HelixUser } from "../lib/api";
 import { chat, type ChatMsg } from "../lib/chat";
 import { nameColor } from "../lib/tokenize";
 import { paintFor } from "../lib/seventv";
@@ -27,6 +27,8 @@ interface Props {
   onClose(): void;
 }
 
+type Tab = "messages" | "whisper";
+
 interface LogMsg {
   id: string;
   text: string;
@@ -36,10 +38,14 @@ interface LogMsg {
 }
 
 /** Popup beim Klick auf einen Namen im Chat. */
-export function UserCard({ target, onMention, onOpenChannel, onClose }: Props) {
+export function UserCard({ target, canChat, onMention, onOpenChannel, onClose }: Props) {
   const tr = useT();
   const ref = useRef<HTMLDivElement>(null);
   const [user, setUser] = useState<HelixUser & { created_at?: string } | null>(null);
+  const [tab, setTab] = useState<Tab>("messages");
+  const [whisper, setWhisper] = useState("");
+  const [whisperState, setWhisperState] = useState<{ ok?: string; error?: string; sending?: boolean }>({});
+  const ownApp = hasOwnApp();
   const [pos, setPos] = useState({ left: target.x, top: target.y });
 
   // Profil laden
@@ -115,6 +121,25 @@ export function UserCard({ target, onMention, onOpenChannel, onClose }: Props) {
     return d.toDateString() === today ? time : `${d.toLocaleDateString(locale(), { day: "2-digit", month: "2-digit" })} ${time}`;
   };
 
+  const sendWhisper = async () => {
+    const text = whisper.trim();
+    const toId = target.userId ?? user?.id;
+    if (!text || !toId) return;
+    setWhisperState({ sending: true });
+    try {
+      await api.sendWhisper(toId, text);
+      setWhisper("");
+      setWhisperState({ ok: tr("Gesendet.") });
+    } catch (e) {
+      const msg = String(e);
+      setWhisperState({
+        error: /401|403/.test(msg)
+          ? `${msg} – ${tr("Twitch erlaubt Flüstern nur mit verifizierter Telefonnummer.")}`
+          : msg,
+      });
+    }
+  };
+
   const paint = paintFor(target.userId);
   const color = nameColor(target.login, target.color);
   const created = user?.created_at ? new Date(user.created_at).toLocaleDateString(locale()) : null;
@@ -147,6 +172,9 @@ export function UserCard({ target, onMention, onOpenChannel, onClose }: Props) {
         >
           @ {tr("Erwähnen")}
         </button>
+        <button className={tab === "whisper" ? "on" : ""} onClick={() => setTab(tab === "whisper" ? "messages" : "whisper")}>
+          ✉ {tr("Flüstern")}
+        </button>
         <button onClick={() => onOpenChannel(target.login)} title={tr("Kanal öffnen")}>
           ▶ {tr("Kanal")}
         </button>
@@ -155,6 +183,40 @@ export function UserCard({ target, onMention, onOpenChannel, onClose }: Props) {
         </button>
       </div>
 
+      {tab === "whisper" ? (
+        <div className="user-card-whisper">
+          {!ownApp ? (
+            <div className="hint">
+              {tr("Flüstern geht nur mit der eigenen Twitch-App. Verbinden unter Einstellungen → Konto → Erweitert.")}
+            </div>
+          ) : (
+            <>
+              <textarea
+                autoFocus
+                value={whisper}
+                maxLength={500}
+                placeholder={tr("Flüsternachricht an {name}…", { name: target.displayName })}
+                disabled={!canChat || whisperState.sending}
+                onChange={(e) => setWhisper(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    sendWhisper();
+                  }
+                }}
+              />
+              <div className="row">
+                {whisperState.ok && <span className="ok small">{whisperState.ok}</span>}
+                <div className="spacer" />
+                <button className="primary" disabled={!canChat || !whisper.trim() || whisperState.sending} onClick={sendWhisper}>
+                  {tr("Senden")}
+                </button>
+              </div>
+              {whisperState.error && <div className="error small">{whisperState.error}</div>}
+            </>
+          )}
+        </div>
+      ) : (
       <div className="user-card-messages">
           <div className="section-title">
             {tr("Nachrichten")} {recent.length > 0 && <span className="muted">({recent.length})</span>}
@@ -172,6 +234,7 @@ export function UserCard({ target, onMention, onOpenChannel, onClose }: Props) {
             <div className="hint small">{tr("Für #{ch} gibt es keine öffentlichen Logs – nur Nachrichten seit dem Öffnen.", { ch: target.channel })}</div>
           )}
         </div>
+      )}
     </div>
   );
 }

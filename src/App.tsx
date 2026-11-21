@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { listen } from "@tauri-apps/api/event";
-import { api, twitchApi, type AuthInfo, type HelixGame, type HelixStream, type HelixUser } from "./lib/api";
+import { api, twitchApi, setOwnApp, type AuthInfo, type HelixGame, type HelixStream, type HelixUser } from "./lib/api";
 import { irc } from "./lib/irc";
 import { joinChannel, leaveChannel, startChat } from "./lib/chat";
 import { loadGlobalBadges, resetBadges } from "./lib/badges";
@@ -79,6 +79,7 @@ export default function App() {
   const loadAuth = useCallback(async () => {
     try {
       const a = await api.authGet();
+      setOwnApp(a.app);
       setAuth(a);
       irc.setCredentials(a.logged_in ? await api.chatCredentials() : null);
       resetBadges();
@@ -371,6 +372,24 @@ export default function App() {
 
   const closeChannel = (login: string) => setChannels((prev) => prev.filter((c) => c !== login));
 
+  /** Multiview: zwei Streams tauschen die Plätze (per Maus gezogen). */
+  const moveChannel = (from: string, to: string) => {
+    setChannels((prev) => {
+      const i = prev.indexOf(from);
+      const j = prev.indexOf(to);
+      if (i < 0 || j < 0 || i === j) return prev;
+      const next = [...prev];
+      [next[i], next[j]] = [next[j], next[i]];
+      return next;
+    });
+    // Fokus-Ansicht: Wer auf den großen Platz gezogen wird, wird groß
+    if (layout === "focus") {
+      const big = focused && channels.includes(focused) ? focused : channels[0];
+      if (to === big) setFocused(from);
+      else if (from === big) setFocused(to);
+    }
+  };
+
   const toggleFavorite = (login: string) => {
     const fav = getSettings().favorites;
     updateSettings({ favorites: fav.includes(login) ? fav.filter((f) => f !== login) : [...fav, login] });
@@ -536,6 +555,7 @@ export default function App() {
             focused={focused}
             fullscreen={fullscreen}
             renderTile={renderTile}
+            onMove={moveChannel}
             empty={
               <div className="empty">
                 <h1>{t("Willkommen bei MuffinTwitch")}</h1>

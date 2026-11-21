@@ -10,6 +10,7 @@ import { PointsMenu, pointsIcon } from "./PointsMenu";
 import { ChatLine } from "./ChatLine";
 import { EmotePicker, rememberEmote } from "./EmotePicker";
 import { Icon } from "./Icon";
+import { ShareBanner } from "./ShareBanner";
 import { t } from "../lib/i18n";
 import type { HelixUser } from "../lib/api";
 
@@ -324,6 +325,8 @@ export function ChatPanel({ channels, active, onActive, loggedIn, userId, onLogi
       {pickerOpen && target && (
         <EmotePicker channel={target} userId={userId} onPick={insertText} onClose={() => setPickerOpen(false)} />
       )}
+
+      {loggedIn && target && <ShareBanner channel={target} />}
 
       {replyTo && (
         <div className="reply-bar">

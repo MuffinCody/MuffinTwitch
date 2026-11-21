@@ -1,8 +1,10 @@
+mod app_login;
 mod auth;
 mod drops;
 mod follow;
 mod points;
 mod proxy;
+mod share;
 mod stream;
 mod webapi;
 
@@ -93,6 +95,11 @@ pub fn run() {
         .setup(|app| {
             let dir = app.path().app_config_dir()?;
             std::fs::create_dir_all(&dir).ok();
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt;
+                let _ = std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o700));
+            }
             let _ = LOG_PATH.set(dir.join("nativ.log"));
             let auth_path = dir.join("auth.json");
             let auth = auth::AuthData::load(&auth_path);
@@ -100,6 +107,16 @@ pub fn run() {
                 .user_agent(USER_AGENT)
                 .gzip(true)
                 .pool_max_idle_per_host(16)
+                // Weiterleitungen nur auf HTTPS-Adressen mit Namen (keine IPs/localhost)
+                .redirect(reqwest::redirect::Policy::custom(|a| {
+                    let ok = a.url().scheme() == "https"
+                        && matches!(a.url().host(), Some(url::Host::Domain(h)) if h != "localhost" && !h.ends_with(".localhost"));
+                    if !ok || a.previous().len() > 5 {
+                        a.stop()
+                    } else {
+                        a.follow()
+                    }
+                }))
                 .connect_timeout(std::time::Duration::from_secs(10))
                 .timeout(std::time::Duration::from_secs(30))
                 .build()?;
@@ -141,6 +158,13 @@ pub fn run() {
             auth::auth_web_login,
             auth::auth_logout,
             auth::auth_chat_credentials,
+            app_login::app_login_start,
+            app_login::app_login_poll,
+            app_login::app_logout,
+            app_login::send_whisper,
+            share::chat_notifications,
+            share::share_resub,
+            share::share_milestone,
         ])
         .run(tauri::generate_context!())
         .expect("Fehler beim Starten der Anwendung");

@@ -315,7 +315,7 @@ export function PlayerTile(p: Props) {
       )}
 
       <div className="tile-top">
-        <div className="tile-title">
+        <div className="tile-title tile-drag" title={p.multi && !p.fullscreen ? t("Ziehen, um den Stream zu verschieben") : undefined}>
           <b>{p.info?.user_name ?? p.login}</b>
           {p.info && (
             <span className="meta">

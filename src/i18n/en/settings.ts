@@ -98,4 +98,23 @@ export const settings: Record<string, string> = {
   "Einfg": "Insert",
   "Entf": "Delete",
   "Rücktaste": "Backspace",
+
+  // Eigene Twitch-App
+  "Erweitert: eigene Twitch-App (optional)": "Advanced: your own Twitch app (optional)",
+  "Nicht nötig – alles Wichtige läuft über den normalen Login. Eine eigene Twitch-App bringt zusätzlich:": "Not required – everything important works with the regular login. Your own Twitch app additionally gives you:",
+  "private Nachrichten an andere Nutzer (Nutzerkarte → ✉). Twitch erlaubt das nur über die offizielle Schnittstelle.": "private messages to other users (user card → ✉). Twitch only allows this through its official API.",
+  "Ausweichweg": "Fallback",
+  "ändert Twitch seine Webseite, laden gefolgte Kanäle, Folgen-Status und eigene Emotes weiter über die offizielle Schnittstelle.": "if Twitch changes its website, followed channels, follow status and your emotes keep loading through the official API.",
+  "Eigene App verbunden": "Own app connected",
+  "als {name}": "as {name}",
+  "Achtung: anderes Konto als der twitch.tv-Login – geflüstert wird als {name}.": "Note: different account than the twitch.tv login – whispers are sent as {name}.",
+  "Trennen": "Disconnect",
+  "So geht’s: Auf": "How to: create an app on",
+  "eine App anlegen – Client-Typ": "– client type",
+  "„Öffentlich“": "“Public”",
+  " – und die Client-ID hier eintragen. Ein Client-Secret wird nicht gebraucht.": " – and enter its client ID here. No client secret is needed.",
+  "Verbinden": "Connect",
+  "Im Browser bestätigen. Code:": "Confirm in your browser. Code:",
+  "Seite erneut öffnen": "Open page again",
+  "Code abgelaufen – bitte erneut versuchen.": "Code expired – please try again.",
 };

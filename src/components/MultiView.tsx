@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent, type ReactNode } from "react";
 
 export type Layout = "grid" | "focus";
 
@@ -75,11 +75,28 @@ interface Props {
   fullscreen: string | null;
   renderTile(login: string, style: CSSProperties): ReactNode;
   empty: ReactNode;
+  /** Stream per Maus auf einen anderen gezogen → Plätze tauschen */
+  onMove?(from: string, to: string): void;
 }
 
-export function MultiView({ channels, layout, focused, fullscreen, renderTile, empty }: Props) {
+interface Drag {
+  login: string;
+  pointer: number;
+  x0: number;
+  y0: number;
+  dx: number;
+  dy: number;
+  active: boolean;
+  over: number;
+}
+
+/** Ab so vielen Pixeln Bewegung wird aus einem Klick ein Ziehen. */
+const DRAG_START = 6;
+
+export function MultiView({ channels, layout, focused, fullscreen, renderTile, empty, onMove }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 0, h: 0 });
+  const [drag, setDrag] = useState<Drag | null>(null);
 
   useLayoutEffect(() => {
     const el = ref.current!;
@@ -101,15 +118,74 @@ export function MultiView({ channels, layout, focused, fullscreen, renderTile, e
     }
   }
 
+  const canDrag = !!onMove && n > 1 && fsIdx < 0;
+
+  /** Welche Kachel liegt unter dem Mauszeiger? (ohne die gezogene) */
+  const tileAt = (clientX: number, clientY: number, skip: number) => {
+    const box = ref.current?.getBoundingClientRect();
+    if (!box) return -1;
+    const x = clientX - box.left;
+    const y = clientY - box.top;
+    return rects.findIndex((r, i) => i !== skip && !!r && x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h);
+  };
+
+  const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
+    if (!canDrag || e.button !== 0) return;
+    const el = e.target as HTMLElement;
+    if (!el.closest(".tile-drag") || el.closest("button, a, input, select, textarea")) return;
+    const login = (el.closest("[data-login]") as HTMLElement | null)?.dataset.login;
+    if (!login) return;
+    setDrag({ login, pointer: e.pointerId, x0: e.clientX, y0: e.clientY, dx: 0, dy: 0, active: false, over: -1 });
+  };
+
+  const onPointerMove = (e: PointerEvent<HTMLDivElement>) => {
+    if (!drag || e.pointerId !== drag.pointer) return;
+    const dx = e.clientX - drag.x0;
+    const dy = e.clientY - drag.y0;
+    const active = drag.active || Math.hypot(dx, dy) > DRAG_START;
+    if (active && !drag.active) ref.current?.setPointerCapture(e.pointerId);
+    const over = active ? tileAt(e.clientX, e.clientY, channels.indexOf(drag.login)) : -1;
+    setDrag({ ...drag, dx, dy, active, over });
+  };
+
+  const endDrag = (e: PointerEvent<HTMLDivElement>, cancel = false) => {
+    if (!drag || e.pointerId !== drag.pointer) return;
+    if (ref.current?.hasPointerCapture(e.pointerId)) ref.current.releasePointerCapture(e.pointerId);
+    if (drag.active) {
+      // Den Klick nach dem Loslassen nicht an die Kachel weitergeben
+      const swallow = (ev: Event) => ev.stopPropagation();
+      window.addEventListener("click", swallow, { capture: true, once: true });
+      window.setTimeout(() => window.removeEventListener("click", swallow, { capture: true }), 0);
+      if (!cancel && drag.over >= 0 && channels[drag.over]) onMove?.(drag.login, channels[drag.over]);
+    }
+    setDrag(null);
+  };
+
   return (
-    <div ref={ref} className="multiview">
+    <div
+      ref={ref}
+      className={`multiview ${canDrag ? "can-drag" : ""} ${drag?.active ? "dragging" : ""}`}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={(e) => endDrag(e)}
+      onPointerCancel={(e) => endDrag(e, true)}
+    >
       {n === 0 && empty}
       {channels.map((c, i) => {
         const r = rects[i];
-        const style: CSSProperties = r
+        let style: CSSProperties = r
           ? { left: r.x, top: r.y, width: r.w, height: r.h }
           : { left: 0, top: 0, width: 160, height: 90, visibility: "hidden" };
-        return <div key={c} style={{ display: "contents" }}>{renderTile(c, style)}</div>;
+        if (drag?.active && drag.login === c) {
+          style = { ...style, transform: `translate(${drag.dx}px, ${drag.dy}px) scale(0.92)`, zIndex: 20, opacity: 0.85, transition: "none", pointerEvents: "none" };
+        } else if (drag?.active && drag.over === i) {
+          style = { ...style, outline: "3px solid var(--accent)", outlineOffset: -3, zIndex: 10 };
+        }
+        return (
+          <div key={c} data-login={c} style={{ display: "contents" }}>
+            {renderTile(c, style)}
+          </div>
+        );
       })}
     </div>
   );

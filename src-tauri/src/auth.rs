@@ -1,6 +1,8 @@
 //! Twitch-Login: Die echte twitch.tv-Loginseite öffnet sich in einem eigenen
 //! Fenster. Danach wird das Sitzungs-Token (`auth-token`-Cookie) übernommen –
 //! damit laufen Chat, gefolgte Kanäle, Kanalpunkte und Turbo/Abo ohne Werbung.
+//!
+//! Optional und getrennt davon: eine eigene Twitch-App (siehe `app_login.rs`).
 
 use crate::stream::WEB_CLIENT_ID;
 use crate::AppState;
@@ -11,11 +13,18 @@ use tauri::{AppHandle, Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder
 
 const LOGIN_WINDOW: &str = "twitch-login";
 
-#[derive(Serialize, Deserialize, Clone, Default, Debug)]
+#[derive(Serialize, Deserialize, Clone, Default)]
+#[serde(default)]
 pub struct AuthData {
     pub web_token: Option<String>,
     pub web_login: Option<String>,
     pub web_user_id: Option<String>,
+    // Optionale eigene Twitch-App (Device Code Flow, offizielle Helix-API)
+    pub client_id: String,
+    pub access_token: Option<String>,
+    pub refresh_token: Option<String>,
+    pub login: Option<String>,
+    pub user_id: Option<String>,
 }
 
 impl AuthData {
@@ -26,8 +35,27 @@ impl AuthData {
             .unwrap_or_default()
     }
 
-    fn save(&self, path: &Path) {
-        if let Ok(s) = serde_json::to_string_pretty(self) {
+    pub(crate) fn save(&self, path: &Path) {
+        let Ok(s) = serde_json::to_string_pretty(self) else { return };
+        // Linux/macOS: nur für den eigenen Benutzer lesbar (0600).
+        // Windows: %APPDATA% ist ohnehin nur für den eigenen Benutzer zugänglich.
+        #[cfg(unix)]
+        {
+            use std::io::Write;
+            use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
+            let _ = std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o600));
+            if let Ok(mut f) = std::fs::OpenOptions::new()
+                .write(true)
+                .create(true)
+                .truncate(true)
+                .mode(0o600)
+                .open(path)
+            {
+                let _ = f.write_all(s.as_bytes());
+            }
+        }
+        #[cfg(not(unix))]
+        {
             let _ = std::fs::write(path, s);
         }
     }
@@ -41,6 +69,17 @@ impl AuthData {
     fn logged_in(&self) -> bool {
         self.web_token.is_some() && self.web_login.is_some()
     }
+
+    pub(crate) fn clear_app(&mut self) {
+        self.access_token = None;
+        self.refresh_token = None;
+        self.login = None;
+        self.user_id = None;
+    }
+
+    pub(crate) fn has_app(&self) -> bool {
+        self.access_token.is_some() && self.user_id.is_some()
+    }
 }
 
 #[derive(Serialize)]
@@ -48,6 +87,10 @@ pub struct AuthInfo {
     logged_in: bool,
     login: Option<String>,
     user_id: Option<String>,
+    /// eigene Twitch-App verbunden
+    app: bool,
+    app_login: Option<String>,
+    client_id: String,
 }
 
 impl From<&AuthData> for AuthInfo {
@@ -56,24 +99,27 @@ impl From<&AuthData> for AuthInfo {
             logged_in: a.logged_in(),
             login: a.web_login.clone(),
             user_id: a.web_user_id.clone(),
+            app: a.has_app(),
+            app_login: if a.has_app() { a.login.clone() } else { None },
+            client_id: a.client_id.clone(),
         }
     }
 }
 
 #[derive(Deserialize)]
-struct ValidateResponse {
-    login: String,
-    user_id: String,
+pub(crate) struct ValidateResponse {
+    pub(crate) login: String,
+    pub(crate) user_id: String,
 }
 
 /// Ergebnis der Token-Prüfung: gültig, ungültig (401) oder nicht erreichbar.
-enum Check {
+pub(crate) enum Check {
     Valid(ValidateResponse),
     Invalid,
     Unreachable,
 }
 
-async fn check(http: &reqwest::Client, token: &str) -> Check {
+pub(crate) async fn check(http: &reqwest::Client, token: &str) -> Check {
     let res = http
         .get("https://id.twitch.tv/oauth2/validate")
         .header("Authorization", format!("OAuth {token}"))
@@ -102,9 +148,9 @@ pub async fn auth_get(state: State<'_, AppState>) -> Result<AuthInfo, String> {
             Check::Unreachable => {}
             Check::Invalid => auth.clear(),
         }
-        // speichert auch alte Dateien ohne die früheren App-Login-Felder neu
-        auth.save(&state.auth_path);
     }
+    crate::app_login::refresh_status(&state.http, &mut auth).await;
+    auth.save(&state.auth_path);
     Ok(AuthInfo::from(&*auth))
 }
 

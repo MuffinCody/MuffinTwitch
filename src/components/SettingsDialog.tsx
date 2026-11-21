@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { api, type AuthInfo } from "../lib/api";
+import { api, type AuthInfo, type DeviceCode } from "../lib/api";
 import { CHAT_FONTS, useSettings, updateSettings } from "../lib/settings";
 import { playMentionSound } from "../lib/sound";
 import { LANGUAGES, useT, type Lang } from "../lib/i18n";
@@ -161,6 +161,48 @@ export function SettingsDialog({ auth, initialTab, onClose, onAuthChanged }: Pro
     getVersion().then(setVersion).catch(() => {});
   }, []);
   const [error, setError] = useState<string | null>(null);
+  const [clientId, setClientId] = useState(auth?.client_id ?? "");
+  const [device, setDevice] = useState<DeviceCode | null>(null);
+  const [showAdvanced, setShowAdvanced] = useState(!!auth?.app);
+  const pollRef = useRef<number | undefined>(undefined);
+  useEffect(() => () => window.clearTimeout(pollRef.current), []);
+
+  const startAppLogin = async () => {
+    setError(null);
+    try {
+      const d = await api.appLoginStart(clientId);
+      setDevice(d);
+      openUrl(d.verification_uri).catch(() => {});
+      const deadline = Date.now() + d.expires_in * 1000;
+      const poll = async () => {
+        if (Date.now() > deadline) {
+          setDevice(null);
+          setError(t("Code abgelaufen – bitte erneut versuchen."));
+          return;
+        }
+        try {
+          const r = await api.appLoginPoll(d.device_code);
+          if (r === "ok") {
+            setDevice(null);
+            onAuthChanged();
+            return;
+          }
+          pollRef.current = window.setTimeout(poll, Math.max(2, d.interval) * 1000);
+        } catch (e) {
+          setDevice(null);
+          setError(String(e));
+        }
+      };
+      pollRef.current = window.setTimeout(poll, Math.max(2, d.interval) * 1000);
+    } catch (e) {
+      setError(String(e));
+    }
+  };
+
+  const appLogout = async () => {
+    await api.appLogout();
+    onAuthChanged();
+  };
   useEffect(() => {
     const key = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", key);
@@ -300,6 +342,69 @@ export function SettingsDialog({ auth, initialTab, onClose, onAuthChanged }: Pro
               checked={s.autoClaimPoints}
               onChange={(v) => updateSettings({ autoClaimPoints: v })}
             />
+
+            <button className="link" style={{ marginTop: 14 }} onClick={() => setShowAdvanced((v) => !v)}>
+              {showAdvanced ? "▾" : "▸"} {t("Erweitert: eigene Twitch-App (optional)")}
+            </button>
+
+            {showAdvanced && (
+              <div className="own-app">
+                <p className="muted">
+                  {t("Nicht nötig – alles Wichtige läuft über den normalen Login. Eine eigene Twitch-App bringt zusätzlich:")}
+                </p>
+                <ul className="own-app-benefits">
+                  <li>
+                    <b>{t("Flüstern")}</b> – {t("private Nachrichten an andere Nutzer (Nutzerkarte → ✉). Twitch erlaubt das nur über die offizielle Schnittstelle.")}
+                  </li>
+                  <li>
+                    <b>{t("Ausweichweg")}</b> – {t("ändert Twitch seine Webseite, laden gefolgte Kanäle, Folgen-Status und eigene Emotes weiter über die offizielle Schnittstelle.")}
+                  </li>
+                </ul>
+                {auth?.app ? (
+                  <div className="account-row">
+                    <div>
+                      <b>{t("Eigene App verbunden")}</b>
+                      <div className="muted small">
+                        {t("als {name}", { name: auth.app_login ?? "?" })}
+                        {auth.login && auth.app_login && auth.login !== auth.app_login && (
+                          <> · {t("Achtung: anderes Konto als der twitch.tv-Login – geflüstert wird als {name}.", { name: auth.app_login })}</>
+                        )}
+                      </div>
+                    </div>
+                    <button onClick={appLogout}>{t("Trennen")}</button>
+                  </div>
+                ) : (
+                  <>
+                    <p className="muted small">
+                      {t("So geht’s: Auf")}{" "}
+                      <a
+                        href="#"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          openUrl("https://dev.twitch.tv/console/apps/create");
+                        }}
+                      >
+                        dev.twitch.tv
+                      </a>{" "}
+                      {t("eine App anlegen – Client-Typ")} <b>{t("„Öffentlich“")}</b>, OAuth-Redirect <code>http://localhost</code>
+                      {t(" – und die Client-ID hier eintragen. Ein Client-Secret wird nicht gebraucht.")}
+                    </p>
+                    <div className="row">
+                      <input value={clientId} onChange={(e) => setClientId(e.target.value)} placeholder="Client-ID" spellCheck={false} />
+                      <button disabled={!clientId.trim() || !!device} onClick={startAppLogin}>
+                        {t("Verbinden")}
+                      </button>
+                    </div>
+                    {device && (
+                      <div className="device">
+                        {t("Im Browser bestätigen. Code:")} <span className="code">{device.user_code}</span>
+                        <button onClick={() => openUrl(device.verification_uri)}>{t("Seite erneut öffnen")}</button>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
             {error && <div className="error">{error}</div>}
           </section>
         )}

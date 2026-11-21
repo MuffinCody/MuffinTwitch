@@ -4,6 +4,18 @@ export interface AuthInfo {
   logged_in: boolean;
   login: string | null;
   user_id: string | null;
+  /** optionale eigene Twitch-App verbunden (Flüstern, offizielle API als Ausweichweg) */
+  app: boolean;
+  app_login: string | null;
+  client_id: string;
+}
+
+export interface DeviceCode {
+  device_code: string;
+  user_code: string;
+  verification_uri: string;
+  expires_in: number;
+  interval: number;
 }
 
 export interface HelixStream {
@@ -25,11 +37,24 @@ export interface HelixUser {
   profile_image_url: string;
 }
 
+/** Eigene Twitch-App verbunden? (wird beim Laden des Logins gesetzt) */
+let ownApp = false;
+export function setOwnApp(v: boolean) {
+  ownApp = v;
+}
+export function hasOwnApp() {
+  return ownApp;
+}
+
 export const api = {
   getStreamUrl: (login: string) => invoke<string>("get_stream_url", { login }),
   authGet: () => invoke<AuthInfo>("auth_get"),
   authWebLogin: () => invoke<void>("auth_web_login"),
   authLogout: () => invoke<void>("auth_logout"),
+  appLoginStart: (clientId: string) => invoke<DeviceCode>("app_login_start", { clientId }),
+  appLoginPoll: (deviceCode: string) => invoke<"pending" | "ok">("app_login_poll", { deviceCode }),
+  appLogout: () => invoke<void>("app_logout"),
+  sendWhisper: (toUserId: string, message: string) => invoke<void>("send_whisper", { toUserId, message }),
   chatCredentials: () => invoke<{ login: string; token: string } | null>("auth_chat_credentials"),
   /** Lese-Abfrage an Twitch (wie die Webseite), mit Login falls vorhanden. */
   gql: <T = any>(query: string, variables: Record<string, unknown> = {}) =>

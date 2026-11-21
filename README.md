@@ -42,6 +42,7 @@ On **Fedora** install it once with `sudo dnf install gstreamer1-plugin-openh264`
 **Multiview**
 - Up to 9 streams at once, grid or focus layout
 - Audio focus by clicking a tile, multiview mode toggle next to the search
+- Rearrange streams with the mouse: drag a stream by its title onto another one to swap them
 - “Stream Together”: shows streams sharing a chat with their partners
 
 **Chat**
@@ -49,7 +50,8 @@ On **Fedora** install it once with `sudo dnf install gstreamer1-plugin-openh264`
 - Emotes from **7TV** (incl. zero-width, live updates, name paints and badges), **BTTV** and **FFZ**
 - Emote picker, tab completion, mention sound, highlight words
 - Slow down / delay chat, font and size, timestamps and more
-- Recent chat history when opening a channel, user cards with older messages and mention
+- Recent chat history when opening a channel, user cards with older messages, mention and whisper (with your own app)
+- Share your resub and watch streak in chat – a prompt appears above the chat like on twitch.tv
 - **Reply** to messages (hover a message → reply button, Esc cancels)
 
 **More**
@@ -69,8 +71,17 @@ The token is stored **locally only**: `%APPDATA%\dev.nativ.twitchclient\auth.jso
 **Channel points, drops & follows:** Twitch may only allow claiming bonus chests, rewards and drops (and sometimes following) through its own website (“integrity check”).
 In that case the app opens the matching Twitch page in your browser.
 
-No developer account or own Twitch app is needed – everything runs through the regular login.
-Whispers are not supported, because Twitch only allows them on its own website.
+No developer account or own Twitch app is needed – everything important runs through the regular login.
+
+**Optional: your own Twitch app** (Settings → Account → Advanced) additionally gives you **whispers** and the official Twitch API as a **fallback** for followed channels, follow status and emotes (in case Twitch changes its website):
+1. Create an app at <https://dev.twitch.tv/console/apps/create> (OAuth redirect `http://localhost`, client type **Public** – no client secret needed)
+2. Enter the client ID in MuffinTwitch → **Connect** → confirm the code in your browser
+
+### Security & privacy
+- Login tokens are stored **only on your computer** (`auth.json` in the app's config folder; on Linux readable only by your user). They are never sent anywhere except to Twitch.
+- The repository and releases contain no tokens, keys or personal data. Your own app only needs its public client ID.
+- A strict Content Security Policy only allows connections to Twitch, 7TV, BTTV/FFZ and the chat-history services – even injected code could not send your token elsewhere.
+- The Twitch login window has no access to app functions; the video proxy only forwards to Twitch's video servers.
 
 ### Build it yourself
 
@@ -95,6 +106,8 @@ Output:
 | `src-tauri/src/proxy.rs` | `twproxy://` – routes HLS requests around CORS |
 | `src-tauri/src/auth.rs` | twitch.tv login |
 | `src-tauri/src/webapi.rs` | Data queries like the Twitch website (followed, search, categories, badges …) |
+| `src-tauri/src/app_login.rs` | Optional own Twitch app: device-code login, whispers, official API fallback |
+| `src-tauri/src/share.rs` | Share resub / watch streak in chat |
 | `src-tauri/src/points.rs`, `drops.rs`, `follow.rs` | Channel points, drops, follow |
 | `src/lib/player.ts` | hls.js setup |
 | `src/lib/irc.ts`, `src/lib/chat.ts` | IRC client, chat store, history |
@@ -149,6 +162,7 @@ Unter **Fedora** einmalig `sudo dnf install gstreamer1-plugin-openh264` ausführ
 **Multiview**
 - Bis zu 9 Streams gleichzeitig, Raster- oder Fokus-Layout
 - Audio-Fokus per Klick auf eine Kachel, Multiview-Modus-Schalter neben der Suche
+- Streams per Maus anordnen: Stream am Titel auf einen anderen ziehen – die beiden tauschen die Plätze
 - „Stream Together“: zeigt gemeinsame Streams (geteilter Chat) samt Partnern an
 
 **Chat**
@@ -156,7 +170,8 @@ Unter **Fedora** einmalig `sudo dnf install gstreamer1-plugin-openh264` ausführ
 - Emotes von **7TV** (inkl. Zero-Width, Live-Updates, Namensfarben/Paints und Badges), **BTTV** und **FFZ**
 - Emote-Auswahl, Tab-Vervollständigung, Erwähnungen mit Ton, Highlight-Wörter
 - Chat verlangsamen/verzögern, Schriftart/-größe, Zeitstempel u. v. m.
-- Chatverlauf beim Öffnen, Nutzerkarte mit älteren Nachrichten und Erwähnen
+- Chatverlauf beim Öffnen, Nutzerkarte mit älteren Nachrichten, Erwähnen und Flüstern (mit eigener App)
+- Abo-Jubiläum und Anschau-Serie im Chat teilen – wie auf twitch.tv erscheint dafür ein Hinweis über dem Chat
 - Auf Nachrichten **antworten** (Maus über die Nachricht → Antworten-Knopf, Esc bricht ab)
 
 **Sonstiges**
@@ -176,8 +191,17 @@ Das Token wird **nur lokal** gespeichert: `%APPDATA%\dev.nativ.twitchclient\auth
 **Kanalpunkte, Drops & Folgen:** Twitch erlaubt das Einsammeln von Bonus-Truhen, Belohnungen und Drops (und teils das Folgen) nur über die eigene Webseite („integrity check“).
 Die App öffnet dann die passende Twitch-Seite in deinem Browser.
 
-Ein Entwickler-Konto oder eine eigene Twitch-App ist nicht nötig – alles läuft über den normalen Login.
-Flüstern gibt es nicht, weil Twitch das nur auf der eigenen Webseite zulässt.
+Ein Entwickler-Konto oder eine eigene Twitch-App ist nicht nötig – alles Wichtige läuft über den normalen Login.
+
+**Optional: eigene Twitch-App** (Einstellungen → Konto → Erweitert) bringt zusätzlich **Flüstern** und die offizielle Twitch-Schnittstelle als **Ausweichweg** für gefolgte Kanäle, Folgen-Status und Emotes (falls Twitch seine Webseite ändert):
+1. Auf <https://dev.twitch.tv/console/apps/create> eine App anlegen (OAuth-Redirect `http://localhost`, Client-Typ **Öffentlich** – kein Client-Secret nötig)
+2. Client-ID in MuffinTwitch eintragen → **Verbinden** → Code im Browser bestätigen
+
+### Sicherheit & Datenschutz
+- Login-Tokens liegen **nur auf deinem Rechner** (`auth.json` im Konfigurationsordner der App; unter Linux nur für deinen Benutzer lesbar) und werden ausschließlich an Twitch geschickt.
+- Repository und Releases enthalten keine Tokens, Schlüssel oder persönlichen Daten. Die eigene App braucht nur ihre öffentliche Client-ID.
+- Eine strenge Content-Security-Policy erlaubt nur Verbindungen zu Twitch, 7TV, BTTV/FFZ und den Chatverlauf-Diensten – selbst eingeschleuster Code könnte dein Token nicht woandershin schicken.
+- Das Twitch-Loginfenster hat keinen Zugriff auf App-Funktionen; der Video-Proxy leitet nur zu Twitchs Videoservern weiter.
 
 ### Selbst bauen
 
@@ -202,6 +226,8 @@ Ergebnis:
 | `src-tauri/src/proxy.rs` | `twproxy://` – leitet HLS-Anfragen um CORS herum |
 | `src-tauri/src/auth.rs` | twitch.tv-Login |
 | `src-tauri/src/webapi.rs` | Datenabfragen wie die Twitch-Webseite (gefolgt, Suche, Kategorien, Abzeichen …) |
+| `src-tauri/src/app_login.rs` | Optionale eigene Twitch-App: Device-Code-Login, Flüstern, offizieller Ausweichweg |
+| `src-tauri/src/share.rs` | Abo-Jubiläum / Anschau-Serie im Chat teilen |
 | `src-tauri/src/points.rs`, `drops.rs`, `follow.rs` | Kanalpunkte, Drops, Folgen |
 | `src/lib/player.ts` | hls.js-Setup |
 | `src/lib/irc.ts`, `src/lib/chat.ts` | IRC-Client, Chat-Store, Verlauf |
