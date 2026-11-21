@@ -2,6 +2,14 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Rechte für das Hauptfenster",
-  "windows": ["main"],
-  "permissions": ["core:default", "core:window:allow-set-fullscreen", "opener:default"]
+  "windows": [
+    "main"
+  ],
+  "permissions": [
+    "core:default",
+    "core:window:allow-set-fullscreen",
+    "opener:default",
+    "updater:default",
+    "process:allow-restart"
+  ]
 }

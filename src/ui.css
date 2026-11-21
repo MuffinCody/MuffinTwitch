@@ -500,3 +500,15 @@ button.brand:hover { background: var(--bg-4) !important; }
 .share-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .share-actions button, .share-check { white-space: nowrap; }
 .share-check { display: flex; align-items: center; gap: 5px; font-size: 12px; cursor: pointer; }
+.uptime { font-variant-numeric: tabular-nums; }
+.tile .pbtn.sub-btn.subscribed { color: var(--accent-2); opacity: 1; }
+
+/* Updates */
+.update-pill { display: inline-flex; align-items: center; gap: 5px; margin-right: 6px; padding: 4px 10px; border-radius: 999px; border: none; background: var(--accent); color: #fff; font-weight: 600; font-size: 12px; cursor: pointer; }
+.update-pill:hover { filter: brightness(1.1); }
+.update-box { margin: 6px 0 8px; }
+.update-progress { height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; margin: 6px 0; }
+.update-progress > div { height: 100%; background: var(--accent); transition: width 0.2s; }
+.update-progress > div.indeterminate { animation: update-slide 1.2s ease-in-out infinite; }
+@keyframes update-slide { 0% { margin-left: -30%; } 100% { margin-left: 100%; } }
+.update-notes { white-space: pre-wrap; font: inherit; font-size: 12px; max-height: 160px; overflow: auto; background: rgba(255,255,255,0.04); padding: 8px; border-radius: 6px; margin: 6px 0; }

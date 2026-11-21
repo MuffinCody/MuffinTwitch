@@ -6,6 +6,7 @@ mod points;
 mod proxy;
 mod share;
 mod stream;
+mod subs;
 mod webapi;
 
 use std::io::Write;
@@ -45,6 +46,43 @@ pub fn log_line(msg: &str) {
 #[tauri::command]
 fn log_error(message: String) {
     log_line(&format!("frontend: {}", message.chars().take(2000).collect::<String>()));
+}
+
+/// Wie ist die App installiert? Bestimmt, ob sie sich selbst aktualisieren kann.
+/// "windows" (Installer) und "appimage" ja; "linux-package" (deb/rpm/Arch) über den Paketmanager.
+#[tauri::command]
+fn install_kind() -> &'static str {
+    if cfg!(windows) {
+        "windows"
+    } else if std::env::var_os("APPIMAGE").is_some() {
+        "appimage"
+    } else {
+        "linux-package"
+    }
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+struct LatestRelease {
+    version: String,
+    notes: Option<String>,
+}
+
+/// Neueste veröffentlichte Version (aus latest.json des neuesten GitHub-Releases).
+/// Nur zum Anzeigen – installiert wird ausschließlich über den signierten Updater.
+#[tauri::command]
+async fn latest_release(state: tauri::State<'_, AppState>) -> Result<LatestRelease, String> {
+    let res = state
+        .http
+        .get("https://github.com/MuffinCody/MuffinTwitch/releases/latest/download/latest.json")
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+    if !res.status().is_success() {
+        return Err(format!("HTTP {}", res.status().as_u16()));
+    }
+    let mut r: LatestRelease = res.json().await.map_err(|e| e.to_string())?;
+    r.version = r.version.trim_start_matches('v').to_string();
+    Ok(r)
 }
 
 /// Stürzt der Renderprozess des WebViews ab, wird die Seite neu geladen,
@@ -92,6 +130,8 @@ pub fn run() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .setup(|app| {
             let dir = app.path().app_config_dir()?;
             std::fs::create_dir_all(&dir).ok();
@@ -141,6 +181,8 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             log_error,
+            install_kind,
+            latest_release,
             stream::get_stream_url,
             points::channel_points,
             points::claim_points,
@@ -165,6 +207,7 @@ pub fn run() {
             share::chat_notifications,
             share::share_resub,
             share::share_milestone,
+            subs::sub_status,
         ])
         .run(tauri::generate_context!())
         .expect("Fehler beim Starten der Anwendung");

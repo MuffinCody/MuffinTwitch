@@ -160,4 +160,13 @@ export const playerChat: Record<string, string> = {
   "Teile deinen Meilenstein": "Share your milestone",
   "{n} Streams in Folge geschaut": "Watched {n} streams in a row",
   "Ziehen, um den Stream zu verschieben": "Drag to move the stream",
+
+  // Abo-Knopf
+  "Stufe {n}": "Tier {n}",
+  "Geschenkt": "Gifted",
+  "{n} Monate": "{n} months",
+  "Du hast {name} abonniert": "You are subscribed to {name}",
+  "klicken, um das Abo bei Twitch zu verwalten": "click to manage your sub on Twitch",
+  "{name} wieder abonnieren ({n} Monate bisher)": "Resubscribe to {name} ({n} months so far)",
+  "{name} abonnieren": "Subscribe to {name}",
 };

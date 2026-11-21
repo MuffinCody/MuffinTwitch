@@ -4,3 +4,8 @@ src-tauri/target/
 src-tauri/gen/
 *.log
 .claude/
+
+# Signaturschlüssel niemals einchecken
+*.key
+*.key.pub
+latest.json

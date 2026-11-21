@@ -55,7 +55,9 @@ On **Fedora** install it once with `sudo dnf install gstreamer1-plugin-openh264`
 - **Reply** to messages (hover a message → reply button, Esc cancels)
 
 **More**
-- **Follow / unfollow** channels with the ♡ in the player
+- **Follow / unfollow** channels with the ♡ in the player, **subscribe** with the 👑 below it (opens Twitch's sub page – payment stays with Twitch)
+- Stream uptime as hh:mm:ss
+- **Automatic updates** (Settings → General): signed updates, installed with one click on Windows
 - Search for channels and categories, category browser with favorite categories
 - Followed live channels with refresh button, sortable by viewers, recently watched or “recommended”
 - Channel points (balance, rewards) and drops progress
@@ -82,6 +84,7 @@ No developer account or own Twitch app is needed – everything important runs t
 - The repository and releases contain no tokens, keys or personal data. Your own app only needs its public client ID.
 - A strict Content Security Policy only allows connections to Twitch, 7TV, BTTV/FFZ and the chat-history services – even injected code could not send your token elsewhere.
 - The Twitch login window has no access to app functions; the video proxy only forwards to Twitch's video servers.
+- Updates are signed: the app only installs an update whose signature matches the public key built into it. The private key never leaves the maintainer's computer.
 
 ### Build it yourself
 
@@ -92,6 +95,7 @@ On Linux additionally the Tauri system packages (see [Tauri prerequisites](https
 npm install
 npm run app        # development mode with hot reload
 npm run app:build  # release build (.exe + installer)
+npm run release:win  # maintainers only: signed installer + latest.json for the auto-updater (needs the private signing key)
 ```
 
 Output:
@@ -175,7 +179,9 @@ Unter **Fedora** einmalig `sudo dnf install gstreamer1-plugin-openh264` ausführ
 - Auf Nachrichten **antworten** (Maus über die Nachricht → Antworten-Knopf, Esc bricht ab)
 
 **Sonstiges**
-- Kanälen **folgen / entfolgen** mit dem ♡ im Player
+- Kanälen **folgen / entfolgen** mit dem ♡ im Player, **abonnieren** mit der 👑 darunter (öffnet die Abo-Seite von Twitch – bezahlt wird nur bei Twitch)
+- Laufzeit der Streams als hh:mm:ss
+- **Automatische Updates** (Einstellungen → Allgemein): signierte Updates, unter Windows mit einem Klick installiert
 - Suche nach Kanälen und Kategorien, Kategorie-Übersicht mit Lieblingskategorien
 - Gefolgte Live-Kanäle mit Aktualisieren-Knopf, sortierbar nach Zuschauern, zuletzt gesehen oder „Empfohlen“
 - Kanalpunkte (Kontostand, Belohnungen) und Drops-Fortschritt
@@ -202,6 +208,7 @@ Ein Entwickler-Konto oder eine eigene Twitch-App ist nicht nötig – alles Wich
 - Repository und Releases enthalten keine Tokens, Schlüssel oder persönlichen Daten. Die eigene App braucht nur ihre öffentliche Client-ID.
 - Eine strenge Content-Security-Policy erlaubt nur Verbindungen zu Twitch, 7TV, BTTV/FFZ und den Chatverlauf-Diensten – selbst eingeschleuster Code könnte dein Token nicht woandershin schicken.
 - Das Twitch-Loginfenster hat keinen Zugriff auf App-Funktionen; der Video-Proxy leitet nur zu Twitchs Videoservern weiter.
+- Updates sind signiert: Die App installiert nur Updates, deren Signatur zum eingebauten öffentlichen Schlüssel passt. Der private Schlüssel verlässt nie den Rechner des Maintainers.
 
 ### Selbst bauen
 
@@ -212,6 +219,7 @@ Unter Linux zusätzlich die Tauri-Systempakete (siehe [Tauri-Voraussetzungen](ht
 npm install
 npm run app        # Entwicklungsmodus mit Hot-Reload
 npm run app:build  # Release-Build (.exe + Installer)
+npm run release:win  # nur für Maintainer: signierter Installer + latest.json für den Auto-Updater (braucht den privaten Signaturschlüssel)
 ```
 
 Ergebnis:

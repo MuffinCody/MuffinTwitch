@@ -76,4 +76,9 @@ export const app: Record<string, string> = {
   // Fehler-Grenze
   "Hier ist etwas schiefgelaufen.": "Something went wrong here.",
   "Erneut versuchen": "Try again",
+
+  // Updates
+  "Update ansehen und installieren": "View and install update",
+  "Update {v}": "Update {v}",
+  "Update läuft…": "Updating…",
 };

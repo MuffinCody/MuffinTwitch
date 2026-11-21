@@ -62,6 +62,8 @@ export interface Settings {
   shortcutsEnabled: boolean;
   /** Beim Start die zuletzt geöffneten Kanäle wieder öffnen */
   restoreChannels: boolean;
+  /** beim Start nach Updates suchen */
+  autoUpdateCheck: boolean;
 }
 
 const DEFAULTS: Settings = {
@@ -104,6 +106,7 @@ const DEFAULTS: Settings = {
   shortcuts: {},
   shortcutsEnabled: true,
   restoreChannels: true,
+  autoUpdateCheck: true,
 };
 
 /** Merkt, dass ein Kanal gerade geschaut wird (+ Minuten). */

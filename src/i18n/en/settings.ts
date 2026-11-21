@@ -117,4 +117,19 @@ export const settings: Record<string, string> = {
   "Im Browser bestätigen. Code:": "Confirm in your browser. Code:",
   "Seite erneut öffnen": "Open page again",
   "Code abgelaufen – bitte erneut versuchen.": "Code expired – please try again.",
+
+  // Updates
+  "Beim Start automatisch nach Updates suchen": "Check for updates automatically on startup",
+  "Updates": "Updates",
+  "Suche nach Updates…": "Checking for updates…",
+  "Du hast die neueste Version.": "You have the latest version.",
+  "Version {v} ist verfügbar!": "Version {v} is available!",
+  "Lade Update herunter…": "Downloading update…",
+  "Lade Update herunter… {p} %": "Downloading update… {p} %",
+  "Installiere – die App startet gleich neu…": "Installing – the app will restart shortly…",
+  "Update-Prüfung fehlgeschlagen": "Update check failed",
+  "Jetzt aktualisieren": "Update now",
+  "Zur Download-Seite": "Go to download page",
+  "Mit deb/rpm/Arch-Paketen installierst du Updates über die Download-Seite bzw. deinen Paketmanager.": "With deb/rpm/Arch packages, install updates from the download page or your package manager.",
+  "Updates sind signiert – die App installiert nur Versionen, deren Signatur zum eingebauten Schlüssel passt.": "Updates are signed – the app only installs versions whose signature matches its built-in key.",
 };

@@ -19,6 +19,7 @@ import { SettingsDialog, type SettingsTab } from "./components/SettingsDialog";
 import { SearchBox } from "./components/SearchBox";
 import { UserMenu } from "./components/UserMenu";
 import { DropsButton } from "./components/DropsButton";
+import { checkForUpdates, useUpdate } from "./lib/updates";
 import { BrowseView, type BrowseTarget } from "./components/BrowseView";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { resetTwitchEmotes } from "./components/EmotePicker";
@@ -285,6 +286,14 @@ export default function App() {
     return () => window.clearInterval(t);
   }, [channels.join(",")]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Beim Start (verzögert) still nach Updates suchen
+  const update = useUpdate();
+  useEffect(() => {
+    if (!settings.autoUpdateCheck) return;
+    const tm = window.setTimeout(() => checkForUpdates(true), 8000);
+    return () => window.clearTimeout(tm);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const openSettings = (tab?: SettingsTab) => {
     setSettingsTab(tab);
     setShowSettings(true);
@@ -520,6 +529,12 @@ export default function App() {
               <Icon name="focus" size={14} />
             </button>
           </div>
+        )}
+        {(update.kind === "available" || update.kind === "downloading" || update.kind === "installing") && (
+          <button className="update-pill" onClick={() => openSettings("general")} title={t("Update ansehen und installieren")}>
+            <Icon name="refresh" size={14} />
+            {update.kind === "available" ? t("Update {v}", { v: update.version }) : t("Update läuft…")}
+          </button>
         )}
         {auth?.logged_in && <DropsButton />}
         <UserMenu auth={auth} me={me} onLogin={login} onLogout={logout} onSettings={() => openSettings()} />

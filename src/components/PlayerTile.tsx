@@ -6,6 +6,7 @@ import { Icon } from "./Icon";
 import { t, locale } from "../lib/i18n";
 import { playerBus, type PlayerAction } from "../lib/shortcuts";
 import { toggleFollow, useFollow } from "../lib/follows";
+import { SubButton } from "./SubButton";
 
 interface Props {
   login: string;
@@ -31,11 +32,21 @@ interface Props {
   onToggleFavorite(): void;
 }
 
+/** Laufzeit als hh:mm:ss */
 function uptime(since: string) {
-  const s = Math.max(0, (Date.now() - new Date(since).getTime()) / 1000);
-  const h = Math.floor(s / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  return `${h}:${String(m).padStart(2, "0")}`;
+  const s = Math.max(0, Math.floor((Date.now() - new Date(since).getTime()) / 1000));
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${pad(Math.floor(s / 3600))}:${pad(Math.floor((s % 3600) / 60))}:${pad(s % 60)}`;
+}
+
+/** Eigene kleine Komponente, damit nur die Uhr jede Sekunde neu zeichnet, nicht die ganze Kachel. */
+function Uptime({ since }: { since: string }) {
+  const [, tick] = useState(0);
+  useEffect(() => {
+    const iv = window.setInterval(() => tick((n) => n + 1), 1000);
+    return () => window.clearInterval(iv);
+  }, []);
+  return <span className="uptime">{uptime(since)}</span>;
 }
 
 export function PlayerTile(p: Props) {
@@ -319,7 +330,7 @@ export function PlayerTile(p: Props) {
           <b>{p.info?.user_name ?? p.login}</b>
           {p.info && (
             <span className="meta">
-              {p.info.game_name} · {t("{n} Zuschauer", { n: p.info.viewer_count.toLocaleString(locale()) })} · {uptime(p.info.started_at)}
+              {p.info.game_name} · {t("{n} Zuschauer", { n: p.info.viewer_count.toLocaleString(locale()) })} · <Uptime since={p.info.started_at} />
             </span>
           )}
           {p.info?.title && <div className="stream-title">{p.info.title}</div>}
@@ -358,6 +369,7 @@ export function PlayerTile(p: Props) {
               {confirmUnfollow && <span className="follow-confirm">{t("Entfolgen?")}</span>}
             </button>
           )}
+          {follow.enabled && <SubButton login={p.login} name={p.info?.user_name ?? p.login} />}
           <button className="pbtn" title={p.isFavorite ? t("Aus Favoriten entfernen") : t("Zu Favoriten")} onClick={p.onToggleFavorite}>
             <Icon name={p.isFavorite ? "star" : "star-outline"} size={20} />
           </button>

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { api, type AuthInfo, type DeviceCode } from "../lib/api";
+import { checkForUpdates, installUpdate, useUpdate } from "../lib/updates";
 import { CHAT_FONTS, useSettings, updateSettings } from "../lib/settings";
 import { playMentionSound } from "../lib/sound";
 import { LANGUAGES, useT, type Lang } from "../lib/i18n";
@@ -149,6 +150,58 @@ function Check(props: { label: string; hint?: string; checked: boolean; onChange
         {props.hint && <span className="muted small"> – {props.hint}</span>}
       </span>
     </label>
+  );
+}
+
+/** Updates: suchen, anzeigen, signiert installieren */
+function UpdateSection() {
+  const t = useT();
+  const u = useUpdate();
+  return (
+    <div className="update-box">
+      <div className="row">
+        <span className="row-label">
+          {u.kind === "idle" && t("Updates")}
+          {u.kind === "checking" && t("Suche nach Updates…")}
+          {u.kind === "none" && t("Du hast die neueste Version.")}
+          {u.kind === "available" && t("Version {v} ist verfügbar!", { v: u.version })}
+          {u.kind === "downloading" &&
+            (u.percent === null ? t("Lade Update herunter…") : t("Lade Update herunter… {p} %", { p: u.percent }))}
+          {u.kind === "installing" && t("Installiere – die App startet gleich neu…")}
+          {u.kind === "error" && t("Update-Prüfung fehlgeschlagen")}
+        </span>
+        <div className="spacer" />
+        {u.kind === "available" ? (
+          u.canInstall ? (
+            <button className="primary" onClick={() => installUpdate()}>
+              {t("Jetzt aktualisieren")}
+            </button>
+          ) : (
+            <button className="primary" onClick={() => openUrl("https://github.com/MuffinCody/MuffinTwitch/releases/latest").catch(() => {})}>
+              {t("Zur Download-Seite")}
+            </button>
+          )
+        ) : (
+          <button
+            disabled={u.kind === "checking" || u.kind === "downloading" || u.kind === "installing"}
+            onClick={() => checkForUpdates()}
+          >
+            {t("Nach Updates suchen")}
+          </button>
+        )}
+      </div>
+      {u.kind === "downloading" && (
+        <div className="update-progress">
+          <div style={{ width: `${u.percent ?? 30}%` }} className={u.percent === null ? "indeterminate" : ""} />
+        </div>
+      )}
+      {u.kind === "available" && !u.canInstall && (
+        <p className="muted small">{t("Mit deb/rpm/Arch-Paketen installierst du Updates über die Download-Seite bzw. deinen Paketmanager.")}</p>
+      )}
+      {u.kind === "available" && u.notes && <pre className="update-notes">{u.notes}</pre>}
+      {u.kind === "error" && <div className="error small">{u.message}</div>}
+      <p className="muted small">{t("Updates sind signiert – die App installiert nur Versionen, deren Signatur zum eingebauten Schlüssel passt.")}</p>
+    </div>
   );
 }
 
@@ -301,10 +354,13 @@ export function SettingsDialog({ auth, initialTab, onClose, onAuthChanged }: Pro
                 <span className="row-label">MuffinTwitch {version && `v${version}`}</span>
                 <div className="spacer" />
                 <button onClick={() => openUrl("https://github.com/MuffinCody/MuffinTwitch").catch(() => {})}>GitHub</button>
-                <button onClick={() => openUrl("https://github.com/MuffinCody/MuffinTwitch/releases/latest").catch(() => {})}>
-                  {t("Nach Updates suchen")}
-                </button>
               </div>
+              <UpdateSection />
+              <Check
+                label={t("Beim Start automatisch nach Updates suchen")}
+                checked={s.autoUpdateCheck}
+                onChange={(v) => updateSettings({ autoUpdateCheck: v })}
+              />
               <p className="muted small">{t("Inoffizielles Fanprojekt – steht in keiner Verbindung zu Twitch Interactive, Inc.")}</p>
             </section>
           </>
