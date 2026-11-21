@@ -512,3 +512,10 @@ button.brand:hover { background: var(--bg-4) !important; }
 .update-progress > div.indeterminate { animation: update-slide 1.2s ease-in-out infinite; }
 @keyframes update-slide { 0% { margin-left: -30%; } 100% { margin-left: 100%; } }
 .update-notes { white-space: pre-wrap; font: inherit; font-size: 12px; max-height: 160px; overflow: auto; background: rgba(255,255,255,0.04); padding: 8px; border-radius: 6px; margin: 6px 0; }
+
+/* Einstellungen → Allgemein → Twitch Turbo */
+.turbo-box { border: 1px solid var(--accent); border-radius: 10px; padding: 12px 14px; background: linear-gradient(135deg, rgba(145, 71, 255, 0.18), rgba(145, 71, 255, 0.04)); }
+.turbo-head { display: flex; align-items: center; gap: 8px; color: var(--accent-2, #bf94ff); }
+.turbo-head h3 { margin: 0; color: var(--text); }
+.turbo-box p { margin: 8px 0; line-height: 1.45; }
+.turbo-active { color: #3ecf8e; font-weight: 600; }

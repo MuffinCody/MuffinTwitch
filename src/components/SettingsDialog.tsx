@@ -153,6 +153,52 @@ function Check(props: { label: string; hint?: string; checked: boolean; onChange
   );
 }
 
+/** Twitch Turbo: der offizielle Weg, ohne Werbung zu schauen */
+function TurboSection({ loggedIn }: { loggedIn: boolean }) {
+  const t = useT();
+  const [turbo, setTurbo] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (!loggedIn) {
+      setTurbo(null);
+      return;
+    }
+    api
+      .gql<{ currentUser: { hasTurbo?: boolean } | null }>("query NativTurbo { currentUser { hasTurbo } }")
+      .then((r) => setTurbo(r.currentUser?.hasTurbo ?? null))
+      .catch(() => setTurbo(null));
+  }, [loggedIn]);
+
+  return (
+    <section className="turbo-box">
+      <div className="turbo-head">
+        <Icon name="tv" size={22} />
+        <h3>{t("Werbefrei schauen mit Twitch Turbo")}</h3>
+      </div>
+      {turbo ? (
+        <p className="turbo-active">✓ {t("Turbo ist aktiv – MuffinTwitch läuft bei dir ohne Werbung.")}</p>
+      ) : (
+        <>
+          <p>
+            {t("Mit Twitch Turbo läuft MuffinTwitch komplett ohne Werbung – auf allen Kanälen, auch im Multiview.")}{" "}
+            <b>{t("Das ist die beste Option:")}</b>{" "}
+            {t("offiziell von Twitch, kein Risiko für dein Konto und es funktioniert dauerhaft – anders als Werbeblocker, die ständig kaputtgehen.")}
+          </p>
+          {!loggedIn && (
+            <p className="muted small">{t("Wichtig: Melde dich in MuffinTwitch mit Twitch an (Einstellungen → Konto), damit Turbo in der App gilt.")}</p>
+          )}
+          <p className="muted small">{t("Tipp: Kanäle, die du abonniert hast, laufen auch ohne Turbo werbefrei.")}</p>
+        </>
+      )}
+      <div className="row">
+        <div className="spacer" />
+        <button className={turbo ? "" : "primary"} onClick={() => openUrl("https://www.twitch.tv/turbo").catch(() => {})}>
+          {turbo ? t("Turbo verwalten") : t("Twitch Turbo abonnieren")}
+        </button>
+      </div>
+    </section>
+  );
+}
+
 /** Updates: suchen, anzeigen, signiert installieren */
 function UpdateSection() {
   const t = useT();
@@ -295,6 +341,7 @@ export function SettingsDialog({ auth, initialTab, onClose, onAuthChanged }: Pro
 
         {tab === "general" && (
           <>
+            <TurboSection loggedIn={!!auth?.logged_in} />
             <section>
               <h3>{t("Sprache")} / Language</h3>
               <div className="seg lang-seg">

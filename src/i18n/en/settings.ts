@@ -132,4 +132,15 @@ export const settings: Record<string, string> = {
   "Zur Download-Seite": "Go to download page",
   "Mit deb/rpm/Arch-Paketen installierst du Updates über die Download-Seite bzw. deinen Paketmanager.": "With deb/rpm/Arch packages, install updates from the download page or your package manager.",
   "Updates sind signiert – die App installiert nur Versionen, deren Signatur zum eingebauten Schlüssel passt.": "Updates are signed – the app only installs versions whose signature matches its built-in key.",
+
+  // Twitch Turbo
+  "Werbefrei schauen mit Twitch Turbo": "Watch ad-free with Twitch Turbo",
+  "Turbo ist aktiv – MuffinTwitch läuft bei dir ohne Werbung.": "Turbo is active – MuffinTwitch runs without ads for you.",
+  "Mit Twitch Turbo läuft MuffinTwitch komplett ohne Werbung – auf allen Kanälen, auch im Multiview.": "With Twitch Turbo, MuffinTwitch runs completely ad-free – on every channel, in multiview too.",
+  "Das ist die beste Option:": "This is the best option:",
+  "offiziell von Twitch, kein Risiko für dein Konto und es funktioniert dauerhaft – anders als Werbeblocker, die ständig kaputtgehen.": "official from Twitch, no risk to your account, and it keeps working – unlike ad blockers that break all the time.",
+  "Wichtig: Melde dich in MuffinTwitch mit Twitch an (Einstellungen → Konto), damit Turbo in der App gilt.": "Important: log in to MuffinTwitch with Twitch (Settings → Account) so Turbo applies in the app.",
+  "Tipp: Kanäle, die du abonniert hast, laufen auch ohne Turbo werbefrei.": "Tip: channels you are subscribed to are ad-free even without Turbo.",
+  "Turbo verwalten": "Manage Turbo",
+  "Twitch Turbo abonnieren": "Subscribe to Twitch Turbo",
 };
