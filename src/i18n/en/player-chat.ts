@@ -169,4 +169,5 @@ export const playerChat: Record<string, string> = {
   "klicken, um das Abo bei Twitch zu verwalten": "click to manage your sub on Twitch",
   "{name} wieder abonnieren ({n} Monate bisher)": "Resubscribe to {name} ({n} months so far)",
   "{name} abonnieren": "Subscribe to {name}",
+  "Abo": "Sub",
 };

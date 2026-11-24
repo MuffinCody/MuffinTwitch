@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { channelEmoteList, globalEmoteList, onEmotesChanged, twitchEmote, type Emote, type Provider } from "../lib/emotes";
-import { twitchApi } from "../lib/api";
+import { channelEmoteList, globalEmoteList, loadUserTwitchEmotes, onEmotesChanged, type Emote, type Provider } from "../lib/emotes";
 import { useT } from "../lib/i18n";
 
 const RECENT_KEY = "nativ.recentEmotes";
@@ -23,23 +22,6 @@ export function rememberEmote(name: string) {
   }
 }
 
-// Eigene Twitch-Emotes (Subs etc.) – einmal pro Sitzung laden
-let twitchEmotesCache: Promise<Emote[]> | null = null;
-function loadTwitchEmotes(userId: string): Promise<Emote[]> {
-  twitchEmotesCache ??= twitchApi
-    .userEmotes(userId)
-    .then((list) => list.map((e) => ({ ...twitchEmote(e.id, e.name), id: e.id })))
-    .catch(() => {
-    twitchEmotesCache = null;
-    return [];
-  });
-  return twitchEmotesCache;
-}
-
-export function resetTwitchEmotes() {
-  twitchEmotesCache = null;
-}
-
 interface Props {
   channel: string;
   userId: string | null;
@@ -56,7 +38,7 @@ export function EmotePicker({ channel, userId, onPick, onClose }: Props) {
 
   useEffect(() => onEmotesChanged(() => setVersion((v) => v + 1)), []);
   useEffect(() => {
-    if (userId) loadTwitchEmotes(userId).then(setTwitch);
+    if (userId) loadUserTwitchEmotes().then(setTwitch);
   }, [userId]);
 
   // Klick außerhalb / Escape schließt
@@ -86,13 +68,41 @@ export function EmotePicker({ channel, userId, onPick, onClose }: Props) {
       .filter((e): e is Emote => !!e && match(e));
 
     const out: { title: string; emotes: Emote[] }[] = [];
+    // 1. Zuletzt benutzt (Reihenfolge der Benutzung)
     if (recent.length) out.push({ title: t("Zuletzt benutzt"), emotes: recent });
+
+    // Eigene Twitch-Emotes nach Kanal gruppieren, jeweils alphabetisch
+    const tw = twitch.filter(match);
+    const byOwner = new Map<string, { name: string; emotes: Emote[] }>();
+    const twitchGlobal: Emote[] = [];
+    for (const e of tw) {
+      if (!e.ownerLogin || e.ownerLogin === "twitch") {
+        twitchGlobal.push(e);
+        continue;
+      }
+      const g = byOwner.get(e.ownerLogin) ?? { name: e.owner ?? e.ownerLogin, emotes: [] };
+      g.emotes.push(e);
+      byOwner.set(e.ownerLogin, g);
+    }
+    byOwner.forEach((g) => g.emotes.sort(byName));
+    twitchGlobal.sort(byName);
+
+    // 2. Dieser Kanal: deine Abo-Emotes, dann 7TV/BTTV/FFZ
+    const own = byOwner.get(channel);
+    if (own) out.push({ title: `${t("Kanal")} · ${own.name}`, emotes: own.emotes });
     for (const p of ["7tv", "bttv", "ffz"] as Provider[]) {
       const list = chan.filter((e) => e.provider === p);
       if (list.length) out.push({ title: `${t("Kanal")} · ${PROVIDER_LABEL[p]}`, emotes: list });
     }
-    const tw = twitch.filter(match);
-    if (tw.length) out.push({ title: t("Twitch (deine Emotes)"), emotes: tw });
+
+    // 3. Deine Abo-Emotes anderer Kanäle, nach Kanalname sortiert
+    [...byOwner.entries()]
+      .filter(([login]) => login !== channel)
+      .sort((a, b) => a[1].name.localeCompare(b[1].name))
+      .forEach(([, g]) => out.push({ title: `${t("Abo")} · ${g.name}`, emotes: g.emotes }));
+
+    // 4. Global: Twitch, dann 7TV/BTTV/FFZ
+    if (twitchGlobal.length) out.push({ title: "Global · Twitch", emotes: twitchGlobal });
     for (const p of ["7tv", "bttv", "ffz"] as Provider[]) {
       const list = glob.filter((e) => e.provider === p);
       if (list.length) out.push({ title: `Global · ${PROVIDER_LABEL[p]}`, emotes: list });

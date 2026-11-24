@@ -93,6 +93,14 @@ export function proxify(url: string): string {
   return convertFileSrc(url, "twproxy");
 }
 
+/** Eigenes Twitch-Emote; owner = Kanal (Abo-Emotes), null = Twitch global/Turbo/Prime */
+export interface UserEmote {
+  id: string;
+  name: string;
+  owner?: string | null;
+  owner_login?: string | null;
+}
+
 export interface FollowedStream extends HelixStream {
   profile_image_url?: string;
 }
@@ -160,8 +168,8 @@ export const twitchApi = {
     return invoke<FollowedStream[]>("followed_live_web");
   },
   /** Eigene Twitch-Emotes (Abos usw.) */
-  async userEmotes(_userId: string): Promise<{ id: string; name: string }[]> {
-    return invoke<{ id: string; name: string }[]>("user_emotes_web");
+  async userEmotes(_userId: string): Promise<UserEmote[]> {
+    return invoke<UserEmote[]>("user_emotes_web");
   },
   async usersById(ids: string[]): Promise<HelixUser[]> {
     const out: HelixUser[] = [];

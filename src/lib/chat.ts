@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from "react";
 import { irc, parseIrc, type IrcMessage } from "./irc";
-import { loadChannelEmotes, onSevenTvUpdate, unloadChannelEmotes, loadGlobalEmotes } from "./emotes";
+import { loadChannelEmotes, onSevenTvUpdate, unloadChannelEmotes, loadGlobalEmotes, ownEmoteTag } from "./emotes";
 import { loadChannelBadges } from "./badges";
 import { getSettings } from "./settings";
 import { playMentionSound } from "./sound";
@@ -498,6 +498,8 @@ export function sendMessage(channel: string, text: string, reply?: ReplyTarget):
     color: us?.tags.color,
     badges: badgesFromTag(us?.tags.badges),
     text: body,
+    // Eigene Twitch-Emotes (z. B. Abo-Emotes) selbst erkennen – Twitch schickt eigene Nachrichten nicht zurück
+    emotes: ownEmoteTag(body),
     reply: reply ? { name: reply.name, text: reply.text } : undefined,
     self: true,
   });

@@ -1,5 +1,6 @@
 import { stvEvents } from "./seventv";
 import { t } from "./i18n";
+import { twitchApi } from "./api";
 /** Drittanbieter-Emotes: 7TV (inkl. Live-Updates), BTTV, FFZ. */
 
 export type Provider = "twitch" | "7tv" | "bttv" | "ffz";
@@ -8,6 +9,9 @@ export interface Emote {
   id: string;
   name: string;
   provider: Provider;
+  /** nur eigene Twitch-Emotes: Kanal, zu dem das Emote gehört */
+  owner?: string;
+  ownerLogin?: string;
   url: string;
   srcset: string;
   zeroWidth: boolean;
@@ -43,7 +47,72 @@ export function findEmote(channel: string, word: string): Emote | undefined {
 export function emoteNames(channel: string): string[] {
   const names = new Set<string>(globalEmotes.keys());
   channelEmotes.get(channel)?.forEach((_, k) => names.add(k));
+  userTwitch.forEach((_, k) => names.add(k));
   return [...names];
+}
+
+// ---------- Eigene Twitch-Emotes (Abos, Turbo, Prime, Global) ----------
+// Für die Emote-Auswahl, die Tab-Vervollständigung und die eigene Nachricht im
+// Chat: Twitch schickt eigene Nachrichten nicht zurück, daher kennen wir dort
+// die Emote-Positionen nicht und erkennen die Emotes selbst am Namen.
+
+const userTwitch: EmoteMap = new Map();
+let userTwitchLoad: Promise<Emote[]> | null = null;
+
+export function loadUserTwitchEmotes(): Promise<Emote[]> {
+  userTwitchLoad ??= twitchApi
+    .userEmotes("")
+    .then((list) => {
+      userTwitch.clear();
+      const out = list.map((e) => ({
+        ...twitchEmote(e.id, e.name),
+        owner: e.owner ?? undefined,
+        ownerLogin: e.owner_login ?? undefined,
+      }));
+      for (const e of out) if (!userTwitch.has(e.name)) userTwitch.set(e.name, e);
+      notify(null);
+      return out;
+    })
+    .catch(() => {
+      userTwitchLoad = null;
+      return [];
+    });
+  return userTwitchLoad;
+}
+
+export function resetUserTwitchEmotes() {
+  userTwitchLoad = null;
+  userTwitch.clear();
+  notify(null);
+}
+
+export function userTwitchEmote(name: string): Emote | undefined {
+  return userTwitch.get(name);
+}
+
+/**
+ * Baut für eine selbst gesendete Nachricht den Emote-Tag (wie ihn Twitch für
+ * fremde Nachrichten mitschickt): "id:start-end,start-end/id2:…" in Codepoints.
+ */
+export function ownEmoteTag(text: string): string | undefined {
+  if (!userTwitch.size) return undefined;
+  const chars = Array.from(text);
+  const byId = new Map<string, string[]>();
+  let start = 0;
+  for (let k = 0; k <= chars.length; k++) {
+    if (k < chars.length && chars[k] !== " ") continue;
+    if (k > start) {
+      const e = userTwitch.get(chars.slice(start, k).join(""));
+      if (e) {
+        const list = byId.get(e.id) ?? [];
+        list.push(`${start}-${k - 1}`);
+        byId.set(e.id, list);
+      }
+    }
+    start = k + 1;
+  }
+  if (!byId.size) return undefined;
+  return [...byId].map(([id, r]) => `${id}:${r.join(",")}`).join("/");
 }
 
 /** Für den Emote-Picker */

@@ -11,7 +11,7 @@ use tauri::State;
 
 const FOLLOWED_LIVE_QUERY: &str = "query NativFollowedLive($after: Cursor) { currentUser { followedLiveUsers(first: 100, after: $after) { edges { cursor node { id login displayName profileImageURL(width: 70) stream { id title type viewersCount createdAt game { name } } } } pageInfo { hasNextPage } } } }";
 const IS_FOLLOWING_QUERY: &str = "query NativIsFollowing($id: ID!) { user(id: $id) { self { follower { followedAt } } } }";
-const USER_EMOTES_QUERY: &str = "query NativUserEmotes { currentUser { emoteSets { id emotes { id token } } } }";
+const USER_EMOTES_QUERY: &str = "query NativUserEmotes { currentUser { emoteSets { id owner { login displayName } emotes { id token } } } }";
 
 /// Gleiche Form wie ein Helix-Stream, damit die Oberfläche nichts unterscheiden muss.
 #[derive(Serialize)]
@@ -178,6 +178,9 @@ async fn is_following_gql(state: &State<'_, AppState>, channel_id: &str) -> Resu
 pub struct WebEmote {
     id: String,
     name: String,
+    /// Kanal, zu dem das Emote gehört (Abo-Emotes); None = Twitch global/Turbo/Prime
+    owner: Option<String>,
+    owner_login: Option<String>,
 }
 
 /// Eigene Twitch-Emotes (Abos, Turbo, Global …).
@@ -202,7 +205,7 @@ async fn user_emotes_helix(state: &State<'_, AppState>, uid: String) -> Result<V
         }
         let r = helix(state, reqwest::Method::GET, "chat/emotes/user", &q, None).await?;
         for e in r["data"].as_array().into_iter().flatten() {
-            out.push(WebEmote { id: s(&e["id"]), name: s(&e["name"]) });
+            out.push(WebEmote { id: s(&e["id"]), name: s(&e["name"]), owner: None, owner_login: None });
         }
         match r["pagination"]["cursor"].as_str() {
             Some(c) if !c.is_empty() => after = Some(c.to_string()),
@@ -217,11 +220,13 @@ async fn user_emotes_gql(state: &State<'_, AppState>) -> Result<Vec<WebEmote>, S
     let mut out = Vec::new();
     let mut seen = std::collections::HashSet::new();
     for set in res["data"]["currentUser"]["emoteSets"].as_array().into_iter().flatten() {
+        let owner_login = set["owner"]["login"].as_str().filter(|l| !l.is_empty()).map(String::from);
+        let owner = set["owner"]["displayName"].as_str().filter(|l| !l.is_empty()).map(String::from).or_else(|| owner_login.clone());
         for e in set["emotes"].as_array().into_iter().flatten() {
             let id = s(&e["id"]);
             let name = s(&e["token"]);
             if !id.is_empty() && !name.is_empty() && seen.insert(id.clone()) {
-                out.push(WebEmote { id, name });
+                out.push(WebEmote { id, name, owner: owner.clone(), owner_login: owner_login.clone() });
             }
         }
     }

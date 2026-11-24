@@ -1,6 +1,6 @@
 [package]
 name = "muffintwitch"
-version = "0.4.2"
+version = "0.4.3"
 description = "Native Twitch Client mit Multiview und 7TV"
 edition = "2021"
 

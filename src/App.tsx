@@ -20,9 +20,9 @@ import { SearchBox } from "./components/SearchBox";
 import { UserMenu } from "./components/UserMenu";
 import { DropsButton } from "./components/DropsButton";
 import { checkForUpdates, useUpdate } from "./lib/updates";
+import { loadUserTwitchEmotes, resetUserTwitchEmotes } from "./lib/emotes";
 import { BrowseView, type BrowseTarget } from "./components/BrowseView";
 import { ErrorBoundary } from "./components/ErrorBoundary";
-import { resetTwitchEmotes } from "./components/EmotePicker";
 import { Icon } from "./components/Icon";
 
 const MAX_STREAMS = 9;
@@ -84,7 +84,8 @@ export default function App() {
       setAuth(a);
       irc.setCredentials(a.logged_in ? await api.chatCredentials() : null);
       resetBadges();
-      resetTwitchEmotes();
+      resetUserTwitchEmotes();
+      if (a.logged_in) loadUserTwitchEmotes();
       setSelfUser(a.logged_in ? a.user_id : null);
       if (a.logged_in) {
         loadGlobalBadges();
